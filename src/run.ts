@@ -25,7 +25,11 @@ export function firstFreeSlot(state: RunState): number {
   return state.backpack.indexOf(null);
 }
 
-// B1
+
+
+
+/*================== B1: Shop functions, so selling, rerolling and other block checks ==================  */
+
 /** Gold needed to reroll the shop offers. */
 export const REROLL_COST = 1;
 
@@ -73,6 +77,39 @@ export function sellItem(state: RunState, slotIndex: number): RunState {
   return { ...state, gold: state.gold + sellPrice(item.itemId), backpack };
 }
 
+// =====================================================================================================
+
+
+
+
+/*================== B2: Backpack moving functions ==================  */
+
+// Why the item in slot `from` can't be moved to slot `to`, or `null` if it can.
+export function moveBlocker(state: RunState, from: number, to: number): string | null {
+  if (!state.backpack[from]) return "Nothing to move";
+  if (to < 0 || to >= state.backpack.length) return "No such slot";
+  if (from === to) return "Already there";
+
+  return null;
+}
+
+// Moves an item to another slot; onto an occupied slot the two items swap. The very same state if not allowed.
+export function moveItem(state: RunState, from: number, to: number): RunState {
+  if (moveBlocker(state, from, to) !== null) return state;
+
+  const backpack = [...state.backpack];
+  const temp = backpack[from];
+  backpack[from] = backpack[to];
+  backpack[to] = temp;
+
+  return { ...state, backpack };
+}
+
+// =====================================================================================================
+
+
+/*================== B1: Reroll logic ==================  */
+
 /** Why the shop can't be rerolled right now, or `null` if it can. */
 export function rerollBlocker(state: RunState): string | null {
   if (state.gold < REROLL_COST) return "Not enough gold";
@@ -85,6 +122,8 @@ export function rerollShop(state: RunState): RunState {
   const roll = rollShop(state.seed);
   return { ...state, gold: state.gold - REROLL_COST, seed: roll.seed, shop: roll.offers };
 }
+
+// =====================================================================================================
 
 export type RunOutcome = "victory" | "defeat";
 

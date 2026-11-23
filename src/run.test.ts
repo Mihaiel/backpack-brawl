@@ -3,6 +3,8 @@ import { getItem } from "./items";
 import {
   buyBlocker,
   buyItem,
+  moveBlocker,
+  moveItem,
   newRun,
   REROLL_COST,
   rerollBlocker,
@@ -31,6 +33,9 @@ describe("sellPrice", () => {
     expect(sellPrice("iron-cleaver")).toBe(2); // price 5 → 2.5 → 2
   });
 });
+
+
+// ========================  B1: BUY ITEM TESTS ========================
 
 describe("buyItem", () => {
   it("pays the price, fills the first free slot and marks the offer sold", () => {
@@ -90,6 +95,10 @@ describe("buyItem", () => {
   });
 });
 
+
+
+// ========================  B1: SELL ITEM TESTS ========================
+
 describe("sellItem", () => {
   it("removes the item and pays half its price, rounded down", () => {
     const run = runWith({ gold: 3, backpack: filled(0).map((_, i) => (i === 1 ? { uid: "item-9", itemId: "iron-cleaver" } : null)) });
@@ -130,6 +139,61 @@ describe("sellItem", () => {
     expect(run).toEqual(snapshot);
   });
 });
+
+// ========================  B2: MOVE ITEM TESTS ========================
+
+describe("moveItem", () => {
+  const abc = () => runWith({ backpack: [{ uid: "a", itemId: "pot-lid" }, { uid: "b", itemId: "oak-buckler" }, null, null, null, null] });
+
+  it("moves an item to an empty slot", () => {
+    const next = moveItem(abc(), 0, 3);
+    expect(next.backpack[0]).toBeNull();
+    expect(next.backpack[3]?.uid).toBe("a");
+    expect(next.backpack[1]?.uid).toBe("b");
+  });
+
+  it("swaps the two items when the target slot is occupied", () => {
+    const next = moveItem(abc(), 0, 1);
+    expect(next.backpack[0]?.uid).toBe("b");
+    expect(next.backpack[1]?.uid).toBe("a");
+  });
+
+  it("changes nothing but the backpack", () => {
+    const run = abc();
+    const next = moveItem(run, 0, 1);
+    expect({ ...next, backpack: null }).toEqual({ ...run, backpack: null });
+  });
+
+  it("refuses an empty source, the same slot and slots that don't exist, returning the same state", () => {
+    const run = abc();
+    expect(moveBlocker(run, 2, 3)).toBe("Nothing to move");
+    expect(moveBlocker(run, 0, 0)).toBe("Already there");
+    expect(moveBlocker(run, 0, 6)).toBe("No such slot");
+    expect(moveBlocker(run, 0, -1)).toBe("No such slot");
+    expect(moveBlocker(run, 0, 3)).toBeNull();
+    for (const [from, to] of [[2, 3], [0, 0], [0, 6], [0, -1], [9, 0]]) expect(moveItem(run, from, to)).toBe(run);
+  });
+
+  it("does not mutate the state it was given", () => {
+    const run = abc();
+    const snapshot = structuredClone(run);
+    moveItem(run, 0, 1);
+    moveItem(run, 0, 4);
+    expect(run).toEqual(snapshot);
+  });
+
+  it("never loses or duplicates an item over many random moves", () => {
+    const rng = mulberry32(5);
+    let run = abc();
+    for (let step = 0; step < 200; step++) {
+      run = moveItem(run, Math.floor(rng() * BACKPACK_SIZE), Math.floor(rng() * BACKPACK_SIZE));
+      expect(run.backpack).toHaveLength(BACKPACK_SIZE);
+      expect(run.backpack.flatMap((slot) => (slot ? [slot.uid] : [])).sort()).toEqual(["a", "b"]);
+    }
+  });
+});
+
+// ========================  B1: REROLL TESTS ========================
 
 describe("rerollShop", () => {
   it("costs REROLL_COST and replaces every offer, sold ones included", () => {

@@ -11,7 +11,7 @@ import {
   startSearch,
   updateRun,
 } from "./game";
-import { buyItem, rerollShop, sellItem } from "./run";
+import { buyItem, moveItem, rerollShop, sellItem } from "./run";
 import type { GameState, Opponent } from "./types";
 
 const opponent: Opponent = { id: "test", name: "Test Dummy", icon: "🧪", hp: 25, round: 1, items: ["chipped-dagger"] };
@@ -98,6 +98,17 @@ describe("updateRun", () => {
   it("ignores every action once the run is finished", () => {
     const game: GameState = { ...shopping(), phase: "finished" };
     expect(updateRun(game, rerollShop)).toBe(game);
+  });
+
+  it("lets the player arrange the backpack while shopping, and only then", () => {
+    const base = shopping();
+    const run = { ...base.run, backpack: [base.run.backpack[0], null, null, null, null, null] };
+    const game = { ...base, run };
+    expect(updateRun(game, (r) => moveItem(r, 0, 4)).run.backpack[4]).toBe(run.backpack[0]);
+    const locked = searching();
+    expect(updateRun(locked, (r) => moveItem(r, 0, 4))).toBe(locked);
+    const closed = leaveBattle(afterBattle());
+    expect(updateRun(closed, (r) => moveItem(r, 0, 4))).toBe(closed);
   });
 
   it("keeps the same game object when the action is refused", () => {

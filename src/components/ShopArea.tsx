@@ -1,5 +1,5 @@
 import { shopLock, updateRun } from "../game";
-import { buyItem, rerollShop, sellItem } from "../run";
+import { buyItem, moveItem, rerollShop, sellItem } from "../run";
 import { useActiveGame } from "../state/GameContext";
 import { Backpack } from "./Backpack";
 import { HeroCard } from "./HeroCard";
@@ -32,7 +32,12 @@ export function ShopArea({ inventoryOnly = false }: { inventoryOnly?: boolean })
         onBuy={(offerIndex) => update((current) => updateRun(current, (run) => buyItem(run, offerIndex)))}
         onReroll={() => update((current) => updateRun(current, rerollShop))}
       />
-      <Backpack run={game.run} lock={lock} onSell={(slot) => update((current) => updateRun(current, (run) => sellItem(run, slot)))} />
+      <Backpack
+        run={game.run}
+        lock={lock}
+        onSell={(slot) => update((current) => updateRun(current, (run) => sellItem(run, slot)))}
+        onMove={(from, to) => update((current) => updateRun(current, (run) => moveItem(run, from, to)))}
+      />
     </div>
   );
 }

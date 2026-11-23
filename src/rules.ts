@@ -55,6 +55,7 @@ export const RULES: RuleSection[] = [
       `Bought items go to the first free slot of your ${BACKPACK_COLS}×${BACKPACK_ROWS} backpack and stay there for the whole run.`,
       `Sell an item from your backpack for half its price, rounded down. Reroll the shop for ${REROLL_COST} 🪙 to get ${SHOP_SIZE} fresh offers.`,
       `A button that is greyed out tells you why it can't be used. You can shop before your first battle and right after every battle. Once you move on to the next round, your backpack is locked in.`,
+      `Select an item, then pick another slot to move it there. Picking an occupied slot swaps the two items. Pick the selected item again to cancel.`,
       `Only items in your backpack fight. Their position doesn't matter.`,
     ],
   },
