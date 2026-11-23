@@ -12,9 +12,36 @@ export function newGame(seed: number): GameState {
   return { phase: "shop", run: newRun(seed), battle: null, error: null };
 }
 
+/**
+ * Whether the shop page offers shopping at all: only before the first battle.
+ * From round 2 on, shopping happens on the battle page right after a battle,
+ * so the shop page just shows the locked-in backpack and the fight button.
+ */
+export const shopPageOffersShop = (run: RunState) => run.round === 1;
+
+/** B1
+ * Why shop and backpack actions are locked right now, or `null` while shopping.
+ * Shopping happens on the shop page before the first battle, and on the
+ * battle page once a replay has finished (the next round's shop opens there).
+ * After the player moves on to round 2 or later, the build is locked in.
+ */
+export function shopLock(game: GameState): string | null {
+  switch (game.phase) {
+    case "shop":
+      return shopPageOffersShop(game.run) ? null : "Shop closed for this round";
+    case "searching":
+      return "Searching for an opponent";
+    case "battle":
+      if (!game.battle || !isReplayDone(game.battle)) return "Battle in progress";
+      return runOutcome(game.run) ? "The run is over" : null;
+    case "finished":
+      return "The run is over";
+  }
+}
+
 /** Applies a shop/backpack action; only allowed while shopping. */
 export function updateRun(game: GameState, action: (run: RunState) => RunState): GameState {
-  if (game.phase !== "shop") return game;
+  if (shopLock(game) !== null) return game;
   const run = action(game.run);
   return run === game.run ? game : { ...game, run };
 }

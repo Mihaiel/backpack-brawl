@@ -25,15 +25,28 @@ export function firstFreeSlot(state: RunState): number {
   return state.backpack.indexOf(null);
 }
 
-/** Why an offer can't be bought right now, or `null` if it can. */
+// B1
+/** Gold needed to reroll the shop offers. */
+export const REROLL_COST = 1;
+
+/** Gold you get for selling an item: half its price, rounded down. */
+export function sellPrice(itemId: string): number {
+  return Math.floor(getItem(itemId).price / 2);
+}
+
+/**
+ * Why an offer can't be bought right now, or `null` if it can.
+ * The same check guards `buyItem`, so the UI and the rule can't disagree.
+ */
 export function buyBlocker(state: RunState, offerIndex: number): string | null {
   const itemId = state.shop[offerIndex];
   if (!itemId) return "Already sold";
+  if (firstFreeSlot(state) === -1) return "Backpack full";
   if (state.gold < getItem(itemId).price) return "Not enough gold";
   return null;
 }
 
-/** Buys a shop offer into the first free backpack slot; unchanged state if not allowed. */
+/** Buys a shop offer into the first free backpack slot; the very same state if not allowed. */
 export function buyItem(state: RunState, offerIndex: number): RunState {
   if (buyBlocker(state, offerIndex) !== null) return state;
   const itemId = state.shop[offerIndex]!;
@@ -43,6 +56,34 @@ export function buyItem(state: RunState, offerIndex: number): RunState {
   const shop = [...state.shop];
   shop[offerIndex] = null;
   return { ...state, gold: state.gold - getItem(itemId).price, shop, backpack, nextUid: state.nextUid + 1 };
+}
+
+/** Why the item in a backpack slot can't be sold right now, or `null` if it can. */
+export function sellBlocker(state: RunState, slotIndex: number): string | null {
+  if (!state.backpack[slotIndex]) return "Nothing to sell here";
+  return null;
+}
+
+/** Sells the item in a backpack slot for half its price (rounded down); the very same state if not allowed. */
+export function sellItem(state: RunState, slotIndex: number): RunState {
+  if (sellBlocker(state, slotIndex) !== null) return state;
+  const item = state.backpack[slotIndex]!;
+  const backpack = [...state.backpack];
+  backpack[slotIndex] = null;
+  return { ...state, gold: state.gold + sellPrice(item.itemId), backpack };
+}
+
+/** Why the shop can't be rerolled right now, or `null` if it can. */
+export function rerollBlocker(state: RunState): string | null {
+  if (state.gold < REROLL_COST) return "Not enough gold";
+  return null;
+}
+
+/** Pays `REROLL_COST` for four fresh offers (sold slots included); the very same state if not allowed. */
+export function rerollShop(state: RunState): RunState {
+  if (rerollBlocker(state) !== null) return state;
+  const roll = rollShop(state.seed);
+  return { ...state, gold: state.gold - REROLL_COST, seed: roll.seed, shop: roll.offers };
 }
 
 export type RunOutcome = "victory" | "defeat";

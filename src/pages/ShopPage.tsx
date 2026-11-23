@@ -1,20 +1,14 @@
 import { fetchOpponent } from "../api";
-import { Backpack } from "../components/Backpack";
 import { FightBar } from "../components/FightBar";
 import { RulesPanel } from "../components/RulesPanel";
 import { RunHeader } from "../components/RunHeader";
-import { Shop } from "../components/Shop";
-import { fightBlocker, searchFailed, startBattle, startSearch, updateRun } from "../game";
-import { buyItem } from "../run";
+import { ShopArea } from "../components/ShopArea";
+import { fightBlocker, searchFailed, shopPageOffersShop, startBattle, startSearch } from "../game";
 import { useActiveGame } from "../state/GameContext";
 
 export function ShopPage() {
   const { game, update } = useActiveGame();
   const { run, phase } = game;
-
-  function handleBuy(offerIndex: number) {
-    update((current) => updateRun(current, (currentRun) => buyItem(currentRun, offerIndex)));
-  }
 
   // Once the opponent is found the phase becomes "battle" and RequireRoute redirects to the battle page.
   async function handleFindOpponent() {
@@ -34,14 +28,9 @@ export function ShopPage() {
       <RunHeader run={run} />
       <FightBar phase={phase} blocker={fightBlocker(game)} error={game.error} onFight={handleFindOpponent} />
 
-      {/* While searching, the whole shop/backpack area is disabled so the fighting build can't change. */}
-      <fieldset disabled={phase !== "shop"} className="grid min-w-0 gap-4 disabled:opacity-60 lg:grid-cols-[1fr_16rem_18rem]">
-        <Shop run={run} onBuy={handleBuy} />
-        <Backpack backpack={run.backpack} />
-        <aside className="flex flex-col gap-4">
-          <RulesPanel open={run.round === 1} />
-        </aside>
-      </fieldset>
+      {/* Round 1: shop and backpack (locked while searching). Later rounds: shopping already happened after the last battle. */}
+      <ShopArea inventoryOnly={!shopPageOffersShop(run)} />
+      <RulesPanel open={run.round === 1} />
     </>
   );
 }

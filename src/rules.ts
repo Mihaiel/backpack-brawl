@@ -1,5 +1,5 @@
 import { HERO_BASE_HP, MAX_TICKS, TICK_SECONDS } from "./battle";
-import { GOLD_PER_ROUND, START_GOLD, START_LIVES, WINS_TO_VICTORY } from "./run";
+import { GOLD_PER_ROUND, REROLL_COST, START_GOLD, START_LIVES, WINS_TO_VICTORY } from "./run";
 import { BACKPACK_COLS, BACKPACK_ROWS, SHOP_SIZE } from "./shop";
 import type { ItemEffects } from "./types";
 
@@ -14,6 +14,14 @@ const BATTLE_SECONDS = MAX_TICKS * TICK_SECONDS;
 export const EFFECT_HELP: Record<keyof ItemEffects, string> = {
   damage: "Damage: hits the enemy. Block absorbs it first, the rest is lost from HP.",
   block: "Block: absorbs incoming damage until used up. Unused block stays for the rest of the battle.",
+};
+
+/** Tooltips for the hero card's build summary. */
+export const BUILD_HELP = {
+  hp: `Your hero starts every battle with ${HERO_BASE_HP} HP.`,
+  items: `Only items in your ${BACKPACK_COLS}×${BACKPACK_ROWS} backpack fight.`,
+  damage: "Damage per second: what your items deal on average if nothing blocks it. Block on the enemy side absorbs it first.",
+  block: "Block per second: what your items add on average. Unused block stays for the rest of the battle.",
 };
 
 export const COOLDOWN_HELP = `Cooldown: the item fires every time this much battle time has passed (1 tick = ${TICK_SECONDS} s).`;
@@ -45,6 +53,8 @@ export const RULES: RuleSection[] = [
       `You start with ${START_GOLD} 🪙 and earn ${GOLD_PER_ROUND} 🪙 at the start of every new round. Unspent gold carries over.`,
       `The shop offers ${SHOP_SIZE} new items every round.`,
       `Bought items go to the first free slot of your ${BACKPACK_COLS}×${BACKPACK_ROWS} backpack and stay there for the whole run.`,
+      `Sell an item from your backpack for half its price, rounded down. Reroll the shop for ${REROLL_COST} 🪙 to get ${SHOP_SIZE} fresh offers.`,
+      `A button that is greyed out tells you why it can't be used. You can shop before your first battle and right after every battle. Once you move on to the next round, your backpack is locked in.`,
       `Only items in your backpack fight. Their position doesn't matter.`,
     ],
   },

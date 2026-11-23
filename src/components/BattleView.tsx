@@ -1,3 +1,4 @@
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import { TICK_SECONDS, MAX_TICKS } from "../battle";
 import { getItem } from "../items";
 import { STATUS_HELP } from "../rules";
@@ -10,16 +11,46 @@ interface BattleViewProps {
   continueLabel: string;
   onSkip: () => void;
   onContinue: () => void;
+  /**
+   * The next round's shop, shown once the replay is done and the run goes on.
+   * The result then shrinks to a compact box next to the shop title, and the
+   * view scrolls to the shop instead of to the result.
+   */
+  shop?: { title: string; content: ReactNode };
 }
 
-export function BattleView({ battle, done, continueLabel, onSkip, onContinue }: BattleViewProps) {
+export function BattleView({ battle, done, continueLabel, onSkip, onContinue, shop }: BattleViewProps) {
   const { result, opponent } = battle;
   const frame = result.frames[battle.frame];
   const log = result.frames
     .slice(1, battle.frame + 1)
     .flatMap((f) => f.events)
     .reverse();
-  const won = result.winner === "player";
+  const showShop = done && shop !== undefined;
+
+  const shopRef = useRef<HTMLElement>(null);
+  const continueRef = useRef<HTMLButtonElement>(null);
+
+  // When the replay ends, bring the shop into view (not the result) and focus the continue button without scrolling to it.
+  useEffect(() => {
+    if (!done) return;
+    if (shopRef.current) {
+      shopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      continueRef.current?.focus({ preventScroll: true });
+    } else {
+      continueRef.current?.focus();
+    }
+  }, [done, showShop]);
+
+  const summary = (
+    <ResultSummary
+      battle={battle}
+      compact={showShop}
+      continueLabel={continueLabel}
+      onContinue={onContinue}
+      buttonRef={continueRef}
+    />
+  );
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-panel-edge bg-panel p-4">
@@ -37,27 +68,16 @@ export function BattleView({ battle, done, continueLabel, onSkip, onContinue }: 
         <FighterPanel side="opponent" icon={opponent.icon} fighter={battle.enemy} snapshot={frame.opponent} />
       </div>
 
-      {done ? (
-        <div
-          role="status"
-          className={`flex flex-col items-center gap-3 rounded-md border-2 p-4 text-center ${won ? "border-gold bg-gold/10" : "border-life bg-life/10"}`}
-        >
-          <p className="font-display text-2xl font-bold">{won ? "🏆 Victory!" : "💀 Defeat"}</p>
-          <p className="text-sm text-muted">
-            {result.reason === "knockout"
-              ? `${won ? opponent.name : "Your hero"} was knocked out.`
-              : `Time ran out — ${won ? "you" : opponent.name} kept the higher share of HP.`}{" "}
-            {won ? "+1 win." : "−1 life."}
-          </p>
-          <button
-            type="button"
-            onClick={onContinue}
-            autoFocus
-            className="rounded-md bg-gold px-4 py-2 font-bold text-ink hover:brightness-110"
-          >
-            {continueLabel}
-          </button>
-        </div>
+      {showShop ? (
+        <section ref={shopRef} className="flex scroll-mt-4 flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-lg font-bold">{shop.title}</h3>
+            {summary}
+          </div>
+          {shop.content}
+        </section>
+      ) : done ? (
+        summary
       ) : (
         <div className="flex justify-end">
           <button type="button" onClick={onSkip} className="rounded-md border border-panel-edge px-4 py-1.5 hover:bg-panel-edge/40">
@@ -85,6 +105,60 @@ export function BattleView({ battle, done, continueLabel, onSkip, onContinue }: 
         </div>
       </section>
     </section>
+  );
+}
+
+interface ResultSummaryProps {
+  battle: BattleReplay;
+  /** Small box next to the shop title instead of the large centred box. */
+  compact: boolean;
+  continueLabel: string;
+  onContinue: () => void;
+  buttonRef: Ref<HTMLButtonElement>;
+}
+
+/** Outcome of the finished battle and the button that leaves it. */
+function ResultSummary({ battle, compact, continueLabel, onContinue, buttonRef }: ResultSummaryProps) {
+  const { result, opponent } = battle;
+  const won = result.winner === "player";
+  const reason =
+    result.reason === "knockout"
+      ? `${won ? opponent.name : "Your hero"} was knocked out.`
+      : `Time ran out — ${won ? "you" : opponent.name} kept the higher share of HP.`;
+  const colours = won ? "border-gold bg-gold/10" : "border-life bg-life/10";
+  const button = (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={onContinue}
+      className={`shrink-0 rounded-md bg-gold font-bold text-ink hover:brightness-110 ${compact ? "px-3 py-1.5 text-sm" : "px-4 py-2"}`}
+    >
+      {continueLabel}
+    </button>
+  );
+
+  if (compact) {
+    return (
+      <div role="status" className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border-2 px-3 py-2 ${colours}`}>
+        <div>
+          <p className="font-display font-bold">
+            {won ? "🏆 Victory!" : "💀 Defeat"} <span className="text-sm font-normal text-muted">{won ? "+1 win" : "−1 life"}</span>
+          </p>
+          <p className="text-xs text-muted">{reason}</p>
+        </div>
+        {button}
+      </div>
+    );
+  }
+
+  return (
+    <div role="status" className={`flex flex-col items-center gap-3 rounded-md border-2 p-4 text-center ${colours}`}>
+      <p className="font-display text-2xl font-bold">{won ? "🏆 Victory!" : "💀 Defeat"}</p>
+      <p className="text-sm text-muted">
+        {reason} {won ? "+1 win." : "−1 life."}
+      </p>
+      {button}
+    </div>
   );
 }
 

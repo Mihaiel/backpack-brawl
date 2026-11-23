@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BattleView } from "../components/BattleView";
 import { RunHeader } from "../components/RunHeader";
+import { ShopArea } from "../components/ShopArea";
 import { advanceReplay, isReplayDone, leaveBattle, skipReplay } from "../game";
 import { runOutcome } from "../run";
 import { useActiveGame } from "../state/GameContext";
@@ -33,6 +34,7 @@ export function BattlePage() {
         continueLabel={outcome ? "See the final result" : `On to round ${run.round} 🏪`}
         onSkip={() => update(skipReplay)}
         onContinue={() => update(leaveBattle)}
+        shop={outcome ? undefined : { title: `🏪 The shop is open for round ${run.round}`, content: <ShopArea /> }}
       />
     </>
   );
