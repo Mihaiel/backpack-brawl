@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
-import { ROUTES } from "./game";
+import { ROUTES } from "./game/game";
 import { BattlePage } from "./pages/BattlePage";
 import { Layout } from "./pages/Layout";
 import { ResultPage } from "./pages/ResultPage";

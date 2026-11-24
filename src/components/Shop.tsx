@@ -1,6 +1,6 @@
-import { getItem } from "../items";
-import { buyBlocker, REROLL_COST, rerollBlocker } from "../run";
-import type { RunState } from "../types";
+import { getItem } from "../game/items";
+import { buyBlocker, REROLL_COST, rerollBlocker } from "../game/run";
+import type { RunState } from "../game/types";
 import { ItemCard } from "./ItemCard";
 
 interface ShopProps {

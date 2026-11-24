@@ -3,7 +3,7 @@
 ## Overall
 
 The current architecture of the web application is a SPA with stateless API calls.
-* All game rules are pure TypeScript with no React imports.
+* All game rules are pure TypeScript with no React imports. They live in `src/game/`, and ESLint fails if a file there imports React or UI code (`no-restricted-imports` in `eslint.config.js`).
 * React is only a rendering and wiring layer.
 
 ```text
@@ -13,14 +13,15 @@ The current architecture of the web application is a SPA with stateless API call
 │ pages/       Start  Shop  Battle  Result    (Layout + RequireRoute)    │
 │ components/  RunHeader FightBar RulesPanel BattleView RunOver          │
 │              ShopArea → Shop, Backpack, HeroCard, ItemCard             │
-│─────────────── pure rules layer (no React) ────────────────────────────│
+│ src/game/: pure rules, no React ───────────────────────────────────────│
 │ game.ts    phase transitions, shopLock + updateRun guard, routeForGame │
 │ run.ts     economy + backpack: buy, sell, reroll, move, outcome        │
 │ shop.ts    mulberry32 PRNG, rollShop, grid size                        │
-│ battle.ts  buildFighter, simulateBattle (ticks)                        │
+│ battle.ts  buildFighter, simulateBattle (ticks, poison, heal)          │
 │ build.ts   summarizeBuild (numbers on the hero card)                   │
-│ items.ts   CATALOG, getItem      rules.ts  tooltip/rule texts          │
-│ api.ts     fetchOpponent(round)                                        │
+│ items.ts   CATALOG, getItem          types.ts  all shared types        │
+│ next to it in src/ ────────────────────────────────────────────────────│
+│ rules.ts   tooltip and rule texts    api.ts    fetchOpponent(round)    │
 └───────────────────────────────┬────────────────────────────────────────┘
                                 │ /api (Vite proxy → :4200)
                       ┌─────────▼──────────┐
@@ -29,6 +30,20 @@ The current architecture of the web application is a SPA with stateless API call
                       │ opponents.js table │  stateless, latency/fail params
                       └────────────────────┘
 ```
+
+## Folder layout
+
+```text
+src/
+  game/        pure rules and their tests: types, items, shop, run, battle, build, game
+  components/  presentational React parts
+  pages/       one component per screen
+  state/       GameProvider, useGame, RequireRoute
+  rules.ts     rule and tooltip texts built from the game constants
+  api.ts       the opponent HTTP request
+```
+
+Dependencies only point one way: `components`, `pages` and `state` import from `game/`, and `game/` imports nothing from them. Tests sit next to the code they test. Unless a path is given, file names in the rest of this document are inside `src/game/`.
 
 ## Game state machine
 

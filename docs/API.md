@@ -41,10 +41,10 @@ Returns the opponent for one round of a run. The opponent table lives in `server
 | `name` | string | Display name |
 | `icon` | string | Emoji shown in the battle view |
 | `hp` | number | Maximum (and starting) HP |
-| `items` | string[] | Item ids from the catalog in `src/items.ts`; the same id may appear several times |
+| `items` | string[] | Item ids from the catalog in `src/game/items.ts`; the same id may appear several times |
 | `round` | number | The round this opponent was requested for (echoes `round`) |
 
-The response matches the `Opponent` type in `src/types.ts`.
+The response matches the `Opponent` type in `src/game/types.ts`.
 
 The answer is deterministic: the same `round` always returns the same opponent. There is one hand-built opponent per round for rounds 1–7. Every round past the table returns the last opponent with +6 HP per additional round. The table never needs more than 7 rounds (5 wins + 3 lives − 1), and an opponent never carries more than 6 items, the size of the player's 2×3 backpack.
 

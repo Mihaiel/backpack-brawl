@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { newGame } from "../game";
-import type { GameState } from "../types";
+import { newGame } from "../game/game";
+import type { GameState } from "../game/types";
 import { GameContext, type GameContextValue } from "./GameContext";
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);

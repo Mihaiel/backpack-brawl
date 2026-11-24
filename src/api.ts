@@ -1,4 +1,4 @@
-import type { Opponent } from "./types";
+import type { Opponent } from "./game/types";
 
 /** Asks the API for this round's opponent; throws with the server's error text on failure. */
 export async function fetchOpponent(round: number): Promise<Opponent> {

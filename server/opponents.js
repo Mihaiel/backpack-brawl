@@ -1,6 +1,6 @@
 /**
  * Hand-built opponents, one per round. A run lasts at most 7 rounds (5 wins + 3 lives − 1),
- * so the table covers every round. Item ids must exist in src/items.ts.
+ * so the table covers every round. Item ids must exist in src/game/items.ts.
  * Rounds past the table reuse the last opponent with more HP (see `opponentForRound`).
  */
 
@@ -23,6 +23,9 @@ export const EXTRA_ITEM = "chipped-dagger";
 export const MAX_ITEMS = 6;
 
 /** Deterministic opponent for a 1-based round number. */
+
+// This just spits out in a deterministic way the opponents, so we iterate through the index.
+// So every round it's the same opponent, how sexy
 export function opponentForRound(round) {
   const last = OPPONENTS[OPPONENTS.length - 1];
   const base = OPPONENTS[round - 1] ?? last;

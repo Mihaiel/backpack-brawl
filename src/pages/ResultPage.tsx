@@ -1,6 +1,6 @@
 import { RunHeader } from "../components/RunHeader";
 import { RunOver } from "../components/RunOver";
-import { runOutcome } from "../run";
+import { runOutcome } from "../game/run";
 import { useActiveGame } from "../state/GameContext";
 
 export function ResultPage() {

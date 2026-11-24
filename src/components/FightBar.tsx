@@ -1,4 +1,4 @@
-import type { Phase } from "../types";
+import type { Phase } from "../game/types";
 
 interface FightBarProps {
   phase: Phase;

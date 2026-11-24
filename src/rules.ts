@@ -1,7 +1,7 @@
-import { HERO_BASE_HP, MAX_TICKS, POISON_DAMAGE_PER_STACK, POISON_MAX_TICKS, POISON_MIN_TICKS, TICK_SECONDS } from "./battle";
-import { GOLD_PER_ROUND, REROLL_COST, START_GOLD, START_LIVES, WINS_TO_VICTORY } from "./run";
-import { BACKPACK_COLS, BACKPACK_ROWS, SHOP_SIZE } from "./shop";
-import type { ItemEffects } from "./types";
+import { HERO_BASE_HP, MAX_TICKS, POISON_DAMAGE_PER_STACK, POISON_MAX_TICKS, POISON_MIN_TICKS, TICK_SECONDS } from "./game/battle";
+import { GOLD_PER_ROUND, REROLL_COST, START_GOLD, START_LIVES, WINS_TO_VICTORY } from "./game/run";
+import { BACKPACK_COLS, BACKPACK_ROWS, SHOP_SIZE } from "./game/shop";
+import type { ItemEffects } from "./game/types";
 
 /**
  * Player-facing explanations of the rules. Built from the game constants so

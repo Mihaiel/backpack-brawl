@@ -1,8 +1,8 @@
-import { formatRate, summarizeBuild } from "../build";
-import { TICK_SECONDS } from "../battle";
-import { describeEffects, getItem } from "../items";
+import { formatRate, summarizeBuild } from "../game/build";
+import { TICK_SECONDS } from "../game/battle";
+import { describeEffects, getItem } from "../game/items";
 import { BUILD_HELP } from "../rules";
-import type { RunState } from "../types";
+import type { RunState } from "../game/types";
 
 /** Hover hint styling for values that have an explanatory tooltip (same as on the item cards). */
 const HELP = "cursor-help underline decoration-dotted decoration-muted/60 underline-offset-2";

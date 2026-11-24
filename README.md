@@ -104,12 +104,12 @@ See [docs/API.md](docs/API.md) for the full contract.
 
 Game rules live in plain TypeScript modules that do not depend on React. Every rule function takes the current state and returns a new one.
 
-- `src/types.ts` defines items, the run, opponents, phases, battle frames and events, and the overall game state.
-- `src/items.ts` contains the item catalog and the effect labels.
-- `src/shop.ts` contains the seeded random number generator, shop rolls and the backpack size.
-- `src/run.ts` contains the run rules: starting values, buying, round progression and win/loss.
-- `src/battle.ts` turns item lists into fighters and contains the battle simulation (`simulateBattle`).
-- `src/game.ts` contains the phase transitions of a run (`shop → searching → battle → shop … → finished`), the replay steps and the mapping from phase to page.
+- `src/game/types.ts` defines items, the run, opponents, phases, battle frames and events, and the overall game state.
+- `src/game/items.ts` contains the item catalog and the effect labels.
+- `src/game/shop.ts` contains the seeded random number generator, shop rolls and the backpack size.
+- `src/game/run.ts` contains the run rules: starting values, buying, round progression and win/loss.
+- `src/game/battle.ts` turns item lists into fighters and contains the battle simulation (`simulateBattle`).
+- `src/game/game.ts` contains the phase transitions of a run (`shop → searching → battle → shop … → finished`), the replay steps and the mapping from phase to page.
 - `src/rules.ts` builds the rule explanations and tooltips from the game constants.
 - `src/api.ts` contains the opponent HTTP request.
 - `src/state/` holds the game state for all pages (`GameProvider`, `useGame`) and `RequireRoute`, which redirects every page to the one matching the current phase.

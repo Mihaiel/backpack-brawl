@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { TICK_SECONDS } from "../battle";
-import { describeEffects, getItem } from "../items";
-import { sellBlocker, sellPrice } from "../run";
-import { BACKPACK_COLS } from "../shop";
-import type { ItemDef, RunState } from "../types";
+import { TICK_SECONDS } from "../game/battle";
+import { describeEffects, getItem } from "../game/items";
+import { sellBlocker, sellPrice } from "../game/run";
+import { BACKPACK_COLS } from "../game/shop";
+import type { ItemDef, RunState } from "../game/types";
 
 /** Hover text for a backpack slot: name, effects and cooldown. */
 const tooltip = (item: ItemDef) =>

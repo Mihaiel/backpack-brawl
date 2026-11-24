@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router";
-import { ROUTES } from "../game";
+import { ROUTES } from "../game/game";
 
 export function Layout() {
   return (

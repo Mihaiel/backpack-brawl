@@ -1,5 +1,5 @@
-import type { RunOutcome } from "../run";
-import type { RunState } from "../types";
+import type { RunOutcome } from "../game/run";
+import type { RunState } from "../game/types";
 
 export function RunOver({ run, outcome, onNewRun }: { run: RunState; outcome: RunOutcome; onNewRun: () => void }) {
   const victory = outcome === "victory";

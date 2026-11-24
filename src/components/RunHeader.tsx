@@ -1,5 +1,5 @@
-import { START_LIVES, WINS_TO_VICTORY } from "../run";
-import type { RunState } from "../types";
+import { START_LIVES, WINS_TO_VICTORY } from "../game/run";
+import type { RunState } from "../game/types";
 
 export function RunHeader({ run }: { run: RunState }) {
   const stats = [

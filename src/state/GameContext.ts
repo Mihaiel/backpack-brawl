@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { GameState } from "../types";
+import type { GameState } from "../game/types";
 
 export interface GameContextValue {
   /** The current run, or `null` before the first run was started. */

@@ -1,8 +1,8 @@
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
-import { TICK_SECONDS, MAX_TICKS } from "../battle";
-import { getItem } from "../items";
+import { TICK_SECONDS, MAX_TICKS } from "../game/battle";
+import { getItem } from "../game/items";
 import { STATUS_HELP } from "../rules";
-import type { BattleEvent, BattleEventKind, BattleReplay, Fighter, FighterSnapshot, Side } from "../types";
+import type { BattleEvent, BattleEventKind, BattleReplay, Fighter, FighterSnapshot, Side } from "../game/types";
 
 interface BattleViewProps {
   battle: BattleReplay;

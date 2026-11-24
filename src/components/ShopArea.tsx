@@ -1,5 +1,5 @@
-import { shopLock, updateRun } from "../game";
-import { buyItem, moveItem, rerollShop, sellItem } from "../run";
+import { shopLock, updateRun } from "../game/game";
+import { buyItem, moveItem, rerollShop, sellItem } from "../game/run";
 import { useActiveGame } from "../state/GameContext";
 import { Backpack } from "./Backpack";
 import { HeroCard } from "./HeroCard";

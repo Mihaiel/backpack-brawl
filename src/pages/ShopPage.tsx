@@ -3,7 +3,7 @@ import { FightBar } from "../components/FightBar";
 import { RulesPanel } from "../components/RulesPanel";
 import { RunHeader } from "../components/RunHeader";
 import { ShopArea } from "../components/ShopArea";
-import { fightBlocker, searchFailed, shopPageOffersShop, startBattle, startSearch } from "../game";
+import { fightBlocker, searchFailed, shopPageOffersShop, startBattle, startSearch } from "../game/game";
 import { useActiveGame } from "../state/GameContext";
 
 export function ShopPage() {

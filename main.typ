@@ -43,6 +43,7 @@
   B5: rgb("#1f9e9e"), // teal
   B6: rgb("#c2417a"), // pink
   B7: rgb("#a67c00"), // gold
+  Refactor: luma(110), // grey, for decisions that belong to no requirement
 )
 
 // One boxed entry per significant decision. `req` ("B1" ... "B7") and the
@@ -188,7 +189,7 @@ These are the goals I chose, each with how I check it. Resilience is still plann
 // ---------------------------------------------------------------------------
 = Architecture Overview
 
-The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`). A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. The details, diagrams and the tables for B1 and B2 are in `ARCHITECTURE.md`.
+The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. The details, diagrams and the tables for B1 and B2 are in `ARCHITECTURE.md`.
 
 // ---------------------------------------------------------------------------
 = Important Decisions
@@ -235,6 +236,17 @@ The application is a single page React app with a thin, stateless Express API. A
   [Option (b). `poison` adds an application `{ stacks, ticksLeft }` to the enemy. `burnPoison` makes every poisoned fighter lose one HP per active stack at the end of each tick and ignores block. `healItem` heals up to max HP, after all damage of the tick. The duration is `rollPoisonTicks(tick, side)`: a roll of 2 to 4 from the existing `mulberry32`, seeded with the tick and the side.],
   [The whole feature is about 60 lines in `battle.ts` and one new test file, and it can be explained in one diagram of the tick order. The roll is reproducible and cannot depend on item order, so a test can assert that reversing the backpack gives the same battle. The price is that there is no general effect framework, so B4's Burn adds its own small counter. Poison never gets cleansed and its per-stack timers are not shown, only the stack count.],
   [Branch `b3`, `battle.ts`, `battle.test.ts`, `items.ts`, `oponents.ts`  `types.ts`, `rules.ts`],
+)
+
+#decision(
+  "Refactor",
+  "24 Nov",
+  [Decision 5: Group the pure game rules in `src/game/` and enforce the boundary],
+  [After B3 the flat `src/` folder held nine rule files next to UI files such as `api.ts` and `rules.ts`. The main architectural claim, that the rules are plain TypeScript and React only draws them, was visible only in the documentation.],
+  [(a) Leave `src/` flat. (b) Move the rules into `src/game/`. (c) A full layered structure with separate folders for data, rules and services.],
+  [Option (b), in its own commit made with `git mv`, so Git follows the renames. Tests stay next to their code. An ESLint rule (`no-restricted-imports` for `src/game/`) fails the lint step if a rule file imports React, a component, a page or the state folder.],
+  [The boundary is now visible in the file tree and checked automatically, which makes the architecture easy to explain. The price was one mechanical change of import paths and a layout that differs from the starter's README (I updated its file list). Option (c) would have added folders with one or two files each.],
+  [Branch `restructure-1`, `eslint.config.js`, `ARCHITECTURE.md` (folder layout)],
 )
 
 // ---------------------------------------------------------------------------

@@ -19,4 +19,16 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // The game rules must stay plain TypeScript: no React and no UI code.
+    files: ['src/game/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['react', 'react-dom', 'react-router', 'react-router-dom'], message: 'src/game must not depend on React.' },
+          { group: ['../components/*', '../pages/*', '../state/*', '../rules', '../api'], message: 'src/game must not import UI code.' },
+        ],
+      }],
+    },
+  },
 ])

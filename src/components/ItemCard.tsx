@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { TICK_SECONDS } from "../battle";
-import { describeEffects } from "../items";
+import { TICK_SECONDS } from "../game/battle";
+import { describeEffects } from "../game/items";
 import { COOLDOWN_HELP, EFFECT_HELP } from "../rules";
-import type { ItemDef } from "../types";
+import type { ItemDef } from "../game/types";
 
 interface ItemCardProps {
   item: ItemDef;
