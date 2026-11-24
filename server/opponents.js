@@ -8,9 +8,14 @@
 export const OPPONENTS = [
   { id: "mossback-hermit", name: "Mossback Hermit", icon: "🐢", hp: 25, items: ["chipped-dagger", "pot-lid"] },
   { id: "grave-tinker", name: "Grave Tinker", icon: "🦴", hp: 36, items: ["hunting-bow", "chipped-dagger", "oak-buckler", "venom-dart"] },
-  { id: "tollgate-ogre", name: "Tollgate Ogre", icon: "👹", hp: 44, items: ["hunting-bow", "chipped-dagger", "chipped-dagger", "oak-buckler", "herbal-salve"] },
+
+  // This opponent underneath has the fire set -> tollgate-ogre
+  { id: "tollgate-ogre", name: "Tollgate Ogre", icon: "👹", hp: 44, items: ["hunting-bow", "ember-dagger", "ember-dagger", "oak-buckler", "herbal-salve"] },
+  
   { id: "rusted-knight", name: "Rusted Knight", icon: "🪖", hp: 46, items: ["iron-cleaver", "hunting-bow", "chipped-dagger", "oak-buckler", "toxic-flask"] },
-  { id: "pit-gladiator", name: "Pit Gladiator", icon: "🦁", hp: 50, items: ["iron-cleaver", "hunting-bow", "chipped-dagger", "oak-buckler", "golden-apple"] },
+
+  // This opponent underneath has the fire set -> pit gladiator
+  { id: "pit-gladiator", name: "Pit Gladiator", icon: "🦁", hp: 50, items: ["magma-cleaver", "cinder-bow", "chipped-dagger", "oak-buckler", "golden-apple"] },
   { id: "ash-golem", name: "Ash Golem", icon: "🗿", hp: 56, items: ["iron-cleaver", "hunting-bow", "spiked-shield", "chipped-dagger", "oak-buckler"] },
   { id: "hollow-king", name: "Hollow King", icon: "👑", hp: 64, items: ["iron-cleaver", "hunting-bow", "hunting-bow", "spiked-shield", "spider-fang", "life-charm"] },
 ];

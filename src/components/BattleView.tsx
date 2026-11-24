@@ -1,7 +1,9 @@
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import { TICK_SECONDS, MAX_TICKS } from "../game/battle";
 import { getItem } from "../game/items";
+import { getSet } from "../game/sets";
 import { STATUS_HELP } from "../rules";
+import { SetBadge } from "./SetBadge";
 import type { BattleEvent, BattleEventKind, BattleReplay, Fighter, FighterSnapshot, Side } from "../game/types";
 
 interface BattleViewProps {
@@ -166,15 +168,18 @@ function ResultSummary({ battle, compact, continueLabel, onContinue, buttonRef }
 const LOG_ROW = "grid grid-cols-[1fr_auto_1fr] items-start gap-2";
 
 /** Text colour per event: damage red, poison and heal green, everything else neutral. */
+// Text color for the events (effects)
 const EVENT_COLOUR: Partial<Record<BattleEventKind, string>> = {
   damage: "text-life",
+  burn: "text-fire",
+  burnDamage: "text-fire",
   poisonDamage: "text-poison",
   poison: "text-poison",
   heal: "text-poison",
 };
 
 function LogLine({ event }: { event: BattleEvent }) {
-  const icon = event.itemId ? getItem(event.itemId).icon : "☠️";
+  const icon = event.itemId ? getItem(event.itemId).icon : event.kind === "burnDamage" ? "🔥" : "☠️";
   const byPlayer = event.source === "player";
   const text = (
     <span className={`flex gap-1.5 ${byPlayer ? "" : "flex-row-reverse text-right"} ${EVENT_COLOUR[event.kind] ?? ""}`}>
@@ -200,7 +205,7 @@ interface FighterPanelProps {
 }
 
 function FighterPanel({ side, icon, fighter, snapshot }: FighterPanelProps) {
-  const { hp, maxHp, block, poison } = snapshot;
+  const { hp, maxHp, block, poison, burn } = snapshot;
   const knockedOut = hp <= 0;
 
   return (
@@ -217,14 +222,31 @@ function FighterPanel({ side, icon, fighter, snapshot }: FighterPanelProps) {
 
       <Bar label="HP" value={hp} max={maxHp} text={`${hp} / ${maxHp}`} colour="bg-life" help={STATUS_HELP.hp} />
       <Bar label="Block" value={block} max={maxHp} text={`🛡️ ${block}`} colour="bg-block" help={STATUS_HELP.block} />
-      <p title={STATUS_HELP.poison} className={`cursor-help text-xs ${poison > 0 ? "font-bold text-poison" : "text-muted"}`}>
-        ☠️ Poison: <span className="font-mono">{poison}</span>
-      </p>
+      <div className="flex gap-4 text-xs">
+        <p title={STATUS_HELP.poison} className={`cursor-help ${poison > 0 ? "font-bold text-poison" : "text-muted"}`}>
+          ☠️ Poison: <span className="font-mono">{poison}</span>
+        </p>
+        <p title={STATUS_HELP.burn} className={`cursor-help ${burn > 0 ? "font-bold text-fire" : "text-muted"}`}>
+          🔥 Burn: <span className="font-mono">{burn}</span>
+        </p>
+      </div>
+      {fighter.activeSets.length > 0 && (
+        <div className="flex flex-wrap gap-1" aria-label="Active set bonuses">
+          {fighter.activeSets.map((setId) => (
+            <SetBadge key={setId} setId={setId} active />
+          ))}
+        </div>
+      )}
 
       <ul className="flex flex-wrap gap-1" aria-label="Items">
         {fighter.items.map((item, index) => (
-          <li key={index} title={item.name} className="rounded bg-ink/50 px-1.5 py-0.5 text-xl">
+          <li key={index} title={item.set ? `${item.name} (${getSet(item.set).name} set)` : item.name} className="rounded bg-ink/50 px-1.5 py-0.5 text-xl">
             {item.icon}
+            {item.set && (
+              <sup className="ml-0.5 text-[10px]" aria-hidden>
+                {getSet(item.set).icon}
+              </sup>
+            )}
           </li>
         ))}
       </ul>

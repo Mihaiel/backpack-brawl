@@ -2,12 +2,14 @@ import { useState } from "react";
 import { TICK_SECONDS } from "../game/battle";
 import { describeEffects, getItem } from "../game/items";
 import { sellBlocker, sellPrice } from "../game/run";
-import { BACKPACK_COLS } from "../game/shop";
+import { activeSetIds, getSet } from "../game/sets";
+import { BACKPACK_COLS, itemIdsOf } from "../game/shop";
 import type { ItemDef, RunState } from "../game/types";
+import { SetBadge } from "./SetBadge";
 
 /** Hover text for a backpack slot: name, effects and cooldown. */
 const tooltip = (item: ItemDef) =>
-  [item.name, ...describeEffects(item.effects).map(({ label }) => label), `⏱️ every ${item.cooldown * TICK_SECONDS}s`].join("\n");
+  [item.name, ...(item.set ? [`${getSet(item.set).icon} ${getSet(item.set).name} set`] : []), ...describeEffects(item.effects).map(({ label }) => label), `⏱️ every ${item.cooldown * TICK_SECONDS}s`].join("\n");
 
 interface BackpackProps {
   run: RunState;
@@ -23,6 +25,7 @@ interface BackpackProps {
 export function Backpack({ run, lock = null, onSell, onMove }: BackpackProps) {
   // The selection is plain UI state (not part of the run): the uid keeps it valid while the item moves.
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const activeSets = activeSetIds(itemIdsOf(run.backpack));
   const canArrange = onMove !== undefined && lock === null;
   const selectedIndex = canArrange ? run.backpack.findIndex((slot) => slot?.uid === selectedUid) : -1;
   const selectedItem = selectedIndex >= 0 ? getItem(run.backpack[selectedIndex]!.itemId) : null;
@@ -94,6 +97,7 @@ export function Backpack({ run, lock = null, onSell, onMove }: BackpackProps) {
                       {item.icon}
                     </span>
                     <span className="text-center text-xs leading-tight">{item.name}</span>
+                    {item.set && <SetBadge setId={item.set} active={activeSets.includes(item.set)} />}
                   </>
                 )}
                 <span className="text-xs font-bold text-gold">{selected ? "Selected" : target ? (item ? "⇄ Swap" : "Move here") : ""}</span>

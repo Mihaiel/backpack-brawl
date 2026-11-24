@@ -14,6 +14,8 @@
 
   /* B3: Poision color*/
   --color-poison: #7fb069;
+  /* B4: Fire color*/
+  --color-fire: #e8803a;
 }
 
 @layer base {

@@ -129,7 +129,7 @@
 
 Every requirement is built on its own Git branch (`b1`, `b2`, ...) that starts from the merged `master`. Game rules are written as small pure TypeScript functions that are covered by unit tests placed next to the code (`*.test.ts`). The React UI only draws the state and calls those functions, and it is checked by hand in the browser. The architecture is documented in `ARCHITECTURE.md`.
 
-The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 followed because it only extends the battle engine. Planned next: B4 (same engine), then B5, B7 and finally B6, once the saved state has settled.
+The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 followed because it only extends the battle engine. Planned next: B5, then B7 and finally B6, once the saved state has settled.
 
 == Responsibilities
 
@@ -143,8 +143,8 @@ Since I am working alone on this project, all of the responsibilities are up to 
   table.header[*ID*][*Requirement*][*Status*][*Date*][*Notes / evidence*],
   [B1], [Shop economy: sell, reroll],      [#done],  [23 Nov], [Branch `b1`, commit #commit("f8d84f5")],
   [B2], [Backpack arrangement],            [#done],  [23 Nov], [Branch `b2`, commit #commit("bcba98e")],
-  [B3], [Status effects: poison, heal],    [#done],  [24 Nov], [Branch `b3`, #fixme[add commit hash]],
-  [B4], [Item sets and Burn],              [#open],  [-], [],
+  [B3], [Status effects: poison, heal],    [#done],  [24 Nov], [Branch `b3`, commit #commit("0ed9411")],
+  [B4], [Item sets and Burn],              [#done],  [24 Nov], [Branch `b4`, #fixme[add commit hash]],
   [B5], [Resilient matchmaking],           [#open],  [-], [],
   [B6], [Save and resume],                 [#open],  [-], [],
   [B7], [Hall of fame],                    [#open],  [-], [],
@@ -152,7 +152,7 @@ Since I am working alone on this project, all of the responsibilities are up to 
 
 == Requirements not implemented
 
-Not applicable yet: B4 to B7 are still open. #fixme[Update before submission and say why anything is missing.]
+Not applicable yet: B5 to B7 are still open. #fixme[Update before submission and say why anything is missing.]
 
 // ---------------------------------------------------------------------------
 = Timeline
@@ -164,13 +164,14 @@ Not applicable yet: B4 to B7 are still open. #fixme[Update before submission and
 #block(height: 100% - 5em, width: 100%)[
   #place(top + left, dx: 2.2cm + 10pt + 8pt - 1pt, line(angle: 90deg, length: 100%, stroke: 2pt + luma(200)))
   #grid(
-    rows: (1fr,) * 8,
+    rows: (1fr,) * 9,
     timeline-entry("22 Nov", (("Setup", other-color),), [Project setup], [Forked the template, read the README and `REQUIREMENTS.md`, and sorted out the Git workflow (branches, `master`, my fork).]),
     timeline-entry("23 Nov", (("B1", req-colors.B1),), [Shop economy], [Selling, rerolling, a blocker for every action, shop after each battle and a hero card. Commit #commit("f8d84f5").]),
     timeline-entry("23 Nov", (("B2", req-colors.B2),), [Backpack arrangement], [Click to select, move or swap, cancel. `ARCHITECTURE.md` and the diary written. Commit #commit("bcba98e").]),
-    timeline-entry("24 Nov", (("B3", req-colors.B3),), [Status effects: poison, heal], [Poison (burns every tick, 2-4 ticks) and heal as item effects, 6 new items. Commit #fixme[add hash].]),
+    timeline-entry("24 Nov", (("B3", req-colors.B3),), [Status effects: poison, heal], [Poison (burns every tick, 2-4 ticks) and heal as item effects, 6 new items. Commit #commit("0ed9411").]),
+    timeline-entry("24 Nov", (("Refactor", req-colors.Refactor),), [Project restructure], [Pure game rules moved into `src/game/`, with a lint rule that keeps React out. Commit #commit("ac4997b").]),
+    timeline-entry("24 Nov", (("B4", req-colors.B4),), [Item sets and Burn], [Fire and Guard sets with a bonus at 2 items, and Burn (hurts for 3 per stack, block absorbs it, decays). Commit #fixme[add hash].]),
     timeline-entry("TBD", (("B5", req-colors.B5),), [Resilient matchmaking], [Planned next. Not started.], planned: true),
-    timeline-entry("TBD", (("B4", req-colors.B4),), [Item sets and Burn], [Planned. Not started.], planned: true),
     timeline-entry("TBD", (("B7", req-colors.B7),), [Hall of fame], [Planned. Not started.], planned: true),
     timeline-entry("TBD", (("B6", req-colors.B6),), [Save and resume], [Planned last. Not started.], planned: true),
   )
@@ -189,7 +190,24 @@ These are the goals I chose, each with how I check it. Resilience is still plann
 // ---------------------------------------------------------------------------
 = Architecture Overview
 
-The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. The details, diagrams and the tables for B1 and B2 are in `ARCHITECTURE.md`.
+The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. Item sets (B4) are defined in one table in `sets.ts`, applied when a fighter is built, and shown in the interface with the `SetBadge` component. The details, diagrams and the tables for B1 to B4 are in `ARCHITECTURE.md`.
+
+== Where the B4 values are decided
+
+B4 says the exact tick, stack, damage and decay values are my choice, and that they must be deterministic and explained in the interface. They are all named constants, so they can be found and changed in one place, and the rules text is built from the same constants.
+
+#table(
+  columns: (auto, auto, 1fr),
+  stroke: 0.5pt + luma(170),
+  table.header[*Value*][*Where*][*Meaning*],
+  [Tick], [`TICK_SECONDS = 0.5`, `battle.ts`], [Burn hurts at the end of every tick (every 0.5 s of battle time).],
+  [Stacks added], [Fire bonus `{ burn: 1 }`, `SETS` in `sets.ts`], [Every Fire item adds 1 burn stack to the enemy when it fires.],
+  [Damage], [`BURN_DAMAGE_PER_STACK = 3`, `battle.ts`], [Each stack costs 3 HP per tick, which is more than poison (1). Block absorbs it first. It was 2 at first, but a simulation showed Fire then did no more damage than plain items of the same price, so I raised it to 3.],
+  [Decay], [`BURN_DECAY_PER_TICK = 1`, `battle.ts`], [After hurting, burn loses 1 stack, so it wears off.],
+  [Set size], [`SET_MIN_ITEMS = 2`, `sets.ts`], [A set bonus is active from 2 items on.],
+)
+
+Burn is deterministic because it has no random roll. The same fighters always give the same battle. It is explained in the rules panel (the "Item sets" section and a burn line in the "Battle" section, built in `rules.ts`) and in the tooltips of the burn counter and of the burn effect on item cards. It is shown in the battle view as a `Burn: N` counter for each fighter, and in the combat log as orange lines for "sets on fire" and "Burn hurts ...".
 
 // ---------------------------------------------------------------------------
 = Important Decisions
@@ -235,7 +253,7 @@ The application is a single page React app with a thin, stateless Express API. A
   [(a) A generic status-effect system with effect objects, ticking hooks and their own types. (b) Two more fields on `ItemEffects` (`poison`, `heal`) that the existing battle loop resolves. (c) Make the duration a fixed number per item.],
   [Option (b). `poison` adds an application `{ stacks, ticksLeft }` to the enemy. `burnPoison` makes every poisoned fighter lose one HP per active stack at the end of each tick and ignores block. `healItem` heals up to max HP, after all damage of the tick. The duration is `rollPoisonTicks(tick, side)`: a roll of 2 to 4 from the existing `mulberry32`, seeded with the tick and the side.],
   [The whole feature is about 60 lines in `battle.ts` and one new test file, and it can be explained in one diagram of the tick order. The roll is reproducible and cannot depend on item order, so a test can assert that reversing the backpack gives the same battle. The price is that there is no general effect framework, so B4's Burn adds its own small counter. Poison never gets cleansed and its per-stack timers are not shown, only the stack count.],
-  [Branch `b3`, `battle.ts`, `battle.test.ts`, `items.ts`, `oponents.ts`  `types.ts`, `rules.ts`],
+  [#commit("0ed9411"), `battle.ts`, `battle.test.ts`, `items.ts`, `opponents.js`, `types.ts`, `rules.ts`],
 )
 
 #decision(
@@ -246,7 +264,18 @@ The application is a single page React app with a thin, stateless Express API. A
   [(a) Leave `src/` flat. (b) Move the rules into `src/game/`. (c) A full layered structure with separate folders for data, rules and services.],
   [Option (b), in its own commit made with `git mv`, so Git follows the renames. Tests stay next to their code. An ESLint rule (`no-restricted-imports` for `src/game/`) fails the lint step if a rule file imports React, a component, a page or the state folder.],
   [The boundary is now visible in the file tree and checked automatically, which makes the architecture easy to explain. The price was one mechanical change of import paths and a layout that differs from the starter's README (I updated its file list). Option (c) would have added folders with one or two files each.],
-  [Branch `restructure-1`, `eslint.config.js`, `ARCHITECTURE.md` (folder layout)],
+  [#commit("ac4997b"), `eslint.config.js`, `ARCHITECTURE.md` (folder layout)],
+)
+
+#decision(
+  "B4",
+  "24 Nov",
+  [Decision 6: Apply set bonuses when the fighter is built, and make Burn one decaying counter],
+  [B4 needs sets with a bonus at 2 or more items, for the player and the opponents alike, and Burn as a damage-over-time that is clearly different from poison: more damage, stacks faster, blocked by block, and it decays.],
+  [(a) Look up the active sets inside the battle loop on every tick. (b) Resolve the bonus once, when `buildFighter` creates the fighter. For Burn: (c) a list of applications with timers like poison, or (d) one counter that loses a stack every tick.],
+  [Options (b) and (d). `applySetBonuses` adds the bonus effects (Fire: +1 burn, Guard: +2 block) to every item of an active set, and the result is an ordinary `Fighter`, so `simulateBattle` knows nothing about sets. Burn is one number that hurts for 3 per stack through the same block-first `hit()` helper as normal damage, then loses 1 stack per tick. The sets themselves are defined in one table, `SETS` in `sets.ts` (id, name, icon and bonus), and each item names its set in `items.ts`. The component `SetBadge` shows which set an item belongs to, in the shop, the backpack, the hero card and the battle view, and it is highlighted while the bonus is active. Two opponents were changed to use Fire items (rounds 3 and 5), so the bonus is visible on both sides.],
+  [Opponents get their bonuses for free, because they are built by the same function, and the battle engine only grew by the burn counter. Because all bonuses are decided before the first tick, the order of the backpack still cannot change a fight. The price is that a bonus can only add item effects and cannot react to something during the battle. Burn needs no random roll, which makes it easy to explain next to poison.],
+  [Branch `b4`, `sets.ts`, `sets.test.ts`, `SetBadge.tsx`, `battle.ts`, `opponents.js`],
 )
 
 // ---------------------------------------------------------------------------
@@ -263,7 +292,7 @@ I used Claude Code assistance during this game development. It aided me in the f
 
 *Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, and keeping B2 minimal.
 
-*How I checked the output:* unit tests (59 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
+*How I checked the output:* unit tests (76 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
 
 *What I changed or rejected:* 
 1. I rejected some design recommendations, as well as multiple UI implementations for B1, since from a UX perspective, the experience of playing the game was redundant. The first layout hid the shop behind the result box and kept an open, unusable shop page in later rounds, so both were reworked. 
@@ -288,5 +317,8 @@ So far: keeping the rules as pure functions with blockers made the UI easy to bu
   table.header[*Reference*][*What it shows*],
   [#commit("f8d84f5")], [B1: shop economy, post-battle shop, hero card (branch `b1`, merged into `master`).],
   [#commit("bcba98e")], [B2: backpack arrangement, `ARCHITECTURE.md` and diary update (branch `b2`).],
-  [`pnpm test`], [59 unit tests passing at the time of writing (`run`, `game`, `build` and `battle` tests).],
+  [#commit("0ed9411")], [B3: poison and heal, 6 new items, `battle.test.ts` (branch `b3`).],
+  [Branch `b4`], [B4: item sets (Fire, Guard) and Burn, `sets.ts`, `sets.test.ts`. #fixme[Add the commit hash when committed.]],
+  [#commit("ac4997b")], [Restructure: pure rules in `src/game/` and the lint rule that guards the boundary.],
+  [`pnpm test`], [76 unit tests passing at the time of writing (`run`, `game`, `build`, `battle` and `sets` tests).],
 )

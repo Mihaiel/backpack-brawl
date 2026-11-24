@@ -19,7 +19,8 @@ The current architecture of the web application is a SPA with stateless API call
 │ shop.ts    mulberry32 PRNG, rollShop, grid size                        │
 │ battle.ts  buildFighter, simulateBattle (ticks, poison, heal)          │
 │ build.ts   summarizeBuild (numbers on the hero card)                   │
-│ items.ts   CATALOG, getItem          types.ts  all shared types        │
+│ items.ts   CATALOG, getItem   sets.ts   SETS, set bonuses, setProgress │
+│ types.ts   all shared types                                            │
 │ next to it in src/ ────────────────────────────────────────────────────│
 │ rules.ts   tooltip and rule texts    api.ts    fetchOpponent(round)    │
 └───────────────────────────────┬────────────────────────────────────────┘
@@ -35,7 +36,7 @@ The current architecture of the web application is a SPA with stateless API call
 
 ```text
 src/
-  game/        pure rules and their tests: types, items, shop, run, battle, build, game
+  game/        pure rules and their tests: types, items, sets, shop, run, battle, build, game
   components/  presentational React parts
   pages/       one component per screen
   state/       GameProvider, useGame, RequireRoute
@@ -190,6 +191,54 @@ Both effects are two more fields on the item (`ItemEffects`), resolved by the sa
 * **Poison burns every tick** and the duration is what varies. This is simple to show (one counter) and Burn (B4) can differ from it by decaying and by respecting block.
 * **Left out on purpose:** poison cleanse, a per-stack timer in the UI, and poison in the hero card's damage per second (it only counts direct damage).
 
+## B4: Item sets and Burn
+
+Sets are applied when a fighter is built, so the battle never needs to know about them. Burn is one more status next to poison.
+
+| Requirement | Implementation |
+|---|---|
+| At least 2 sets, at least 3 items each, one is Fire | `items.ts` gives each item an optional `set`. **Fire**: Ember Dagger, Cinder Bow, Magma Cleaver (new). **Guard**: Oak Buckler, Pot Lid, Spiked Shield (existing items reused). |
+| Bonus while 2 or more items of a set are in the backpack | `sets.ts`: `SET_MIN_ITEMS = 2`, `setProgress` counts the items per set (duplicates count). |
+| Bonuses apply to player and opponents alike | `buildFighter` calls `applySetBonuses`, and both the hero and the opponent are built with it. |
+| Set badges in the shop and in battle | `SetBadge` on item cards, backpack slots and in the battle view (a small set icon on each item and the active sets per fighter). |
+| Active bonuses are visible | Hero card "Set bonuses" (progress `1 / 2` or `Active: …`), active set badges in battle, rules panel section "Item sets". |
+| Fire adds Burn | The Fire bonus is `{ burn: 1 }`: every Fire item also adds 1 burn stack to the enemy when it fires. |
+
+### Burn compared with poison
+
+| | Poison (B3) | Burn (B4) |
+|---|---|---|
+| Comes from | items with `poison` | the Fire set bonus (`burn` effect) |
+| Damage per stack and tick | 1 | **3** (`BURN_DAMAGE_PER_STACK`) |
+| Block | ignored | **absorbs it first** (same `hit()` as normal damage) |
+| How it ends | each application expires after a rolled 2 to 4 ticks | **one counter that loses 1 stack per tick** (`BURN_DECAY_PER_TICK`) |
+
+### How a tick works now
+
+```text
+1. charge items, collect the ones that fire
+2. fired items deal damage, add block, poison and burn  (player first, then opponent)
+3. fired items heal their owner                          (after all damage of the tick)
+4. poison hurts (ignores block), applications age
+5. burn hurts (block absorbs it first), then decays by 1 stack
+6. knockout check (both down: the hero loses)
+```
+
+### Design
+
+* **A set bonus is just extra item effects.** `applySetBonuses(items, activeSets)` adds the bonus numbers to the effects of every item that belongs to an active set and returns new items. The catalog is never changed, and `simulateBattle` only sees ordinary items with a `burn` effect.
+* **The bonus is decided before the battle.** `buildFighter` stores the result in `Fighter.activeSets` for the interface. Position in the backpack still has no effect.
+* **Burn is one counter**, not a list like poison. It needs no roll, so it is easy to explain: stacks come in, hurt, and lose 1 stack every tick.
+* **One damage path.** The block-first logic moved into a small `hit()` helper that item damage and burn both use, so burn "does not ignore block" by construction.
+* **Values are constants** (`BURN_DAMAGE_PER_STACK`, `BURN_DECAY_PER_TICK`, `SET_MIN_ITEMS`) and build the rules text and tooltips.
+
+### Decisions and trade-offs
+
+* **Bonus when building the fighter** instead of inside the battle loop: opponents get bonuses automatically and the battle code stays small.
+* **Fire as 3 new items, Guard from existing ones**: shows both options the requirement allows. Fire items are a little weaker on their own, because the bonus makes up for it.
+* **Balance was checked with a quick simulation.** At 2 damage per stack a Fire build did about the same total damage as plain items of the same price (212 against 204 in 60 ticks), so there was no reason to pick the set. At 3 it does about 25% more (257 against 204), which rewards the set without making fights too short. Fire builds still do not beat the later opponents on their own. Rounds 3 and 5 got Fire opponents. Opponents that already carried two Guard items now get the Guard bonus too.
+* **Left out on purpose:** more than one set per item, a bonus that scales with 3 or 4 items, and burn in the hero card's damage per second.
+
 ## Tests
 
 Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
@@ -199,6 +248,7 @@ Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
 | `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
-| `battle.test.ts` | Poison (duration roll, burn per tick, ignores block, stacking, knockout, log), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
+| `battle.test.ts` | Poison (duration roll, hurt per tick, ignores block, stacking, knockout, log), burn (damage, block first, decay, stacking, knockout), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
+| `sets.test.ts` | Catalog has 2+ sets with 3+ items and Fire, set progress, activation at 2 items (duplicates count), bonus only for the set's items, catalog never changed, opponents get bonuses, Fire burns only when active. |
 
 The UI is checked by hand; there are no component tests.

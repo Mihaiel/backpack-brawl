@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFighter, POISON_MAX_TICKS, POISON_MIN_TICKS, rollPoisonTicks, simulateBattle } from "./battle";
+import { buildFighter, BURN_DAMAGE_PER_STACK, POISON_DAMAGE_PER_STACK, POISON_MAX_TICKS, POISON_MIN_TICKS, rollPoisonTicks, simulateBattle } from "./battle";
 import { CATALOG } from "./items";
 import type { Fighter, FighterItem, ItemEffects } from "./types";
 
@@ -11,7 +11,7 @@ const item = (effects: ItemEffects, cooldown = 1): FighterItem => ({
   cooldown,
   effects,
 });
-const fighter = (maxHp: number, ...items: FighterItem[]): Fighter => ({ name: "Fighter", maxHp, items });
+const fighter = (maxHp: number, ...items: FighterItem[]): Fighter => ({ name: "Fighter", maxHp, items, activeSets: [] });
 
 describe("rollPoisonTicks", () => {
   it("always rolls a duration inside the allowed range", () => {
@@ -81,6 +81,63 @@ describe("poison", () => {
 
     expect(result.winner).toBe("opponent");
     expect(result.reason).toBe("knockout");
+  });
+});
+
+describe("burn", () => {
+  const dummy = fighter(100);
+  const burner = (stacks: number) => fighter(100, item({ burn: stacks }, 5)); // first fires at tick 5
+
+  it("hurts for every stack at the end of the tick, then decays by one stack", () => {
+    const { frames } = simulateBattle(burner(3), dummy);
+
+    expect(frames[4].opponent.hp).toBe(100); // before the item fired
+    expect(frames[5].opponent.hp).toBe(100 - 3 * BURN_DAMAGE_PER_STACK);
+    expect(frames[5].opponent.burn).toBe(2); // 3 stacks minus one decay
+    expect(frames[6].opponent.hp).toBe(100 - 3 * BURN_DAMAGE_PER_STACK - 2 * BURN_DAMAGE_PER_STACK);
+    expect(frames[7].opponent.burn).toBe(0); // worn off
+    expect(frames[9].opponent.hp).toBe(frames[7].opponent.hp); // no more damage afterwards
+  });
+
+  it("is absorbed by block first", () => {
+    const target = fighter(100, item({ block: 5 }));
+    const { frames } = simulateBattle(burner(1), target);
+
+    expect(frames[5].opponent.block).toBe(25 - BURN_DAMAGE_PER_STACK); // 5 ticks of +5 block, burn ate some
+    expect(frames[5].opponent.hp).toBe(100); // nothing got through
+  });
+
+  it("hurts through once the block is used up", () => {
+    const target = fighter(100, item({ block: 1 }, 5)); // 1 block, first at tick 5
+    const { frames } = simulateBattle(burner(2), target);
+
+    expect(frames[5].opponent.block).toBe(0);
+    expect(frames[5].opponent.hp).toBe(100 - (2 * BURN_DAMAGE_PER_STACK - 1)); // 4 burn damage, 1 absorbed
+  });
+
+  it("stacks up when several items burn in the same tick", () => {
+    const { frames } = simulateBattle(fighter(100, item({ burn: 1 }, 5), item({ burn: 2 }, 5)), dummy);
+
+    expect(frames[5].opponent.hp).toBe(100 - 3 * BURN_DAMAGE_PER_STACK);
+    expect(frames[5].opponent.burn).toBe(2);
+  });
+
+  it("hits harder per stack than poison", () => {
+    expect(BURN_DAMAGE_PER_STACK).toBeGreaterThan(POISON_DAMAGE_PER_STACK);
+  });
+
+  it("knocks out the burning fighter and logs burn and its damage", () => {
+    const result = simulateBattle(burner(4), fighter(8));
+
+    expect(result.winner).toBe("player");
+    expect(result.events.find((e) => e.kind === "burn")).toMatchObject({ tick: 5, source: "player", target: "opponent", amount: 4 });
+    expect(result.events.find((e) => e.kind === "burnDamage")).toMatchObject({ tick: 5, target: "opponent", amount: 4 * BURN_DAMAGE_PER_STACK });
+  });
+
+  it("makes the hero lose when both fighters fall in the same tick", () => {
+    const result = simulateBattle(fighter(2, item({ burn: 1 })), fighter(2, item({ burn: 1 })));
+
+    expect(result.winner).toBe("opponent");
   });
 });
 
