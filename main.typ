@@ -45,9 +45,10 @@
   B7: rgb("#a67c00"), // gold
 )
 
-// One boxed entry per significant decision. `req` ("B1" ... "B7") becomes a
-// coloured tab on top of the box, like an index tab in a book.
-#let decision(req, title, background, options, choice, consequences, evidence) = block(
+// One boxed entry per significant decision. `req` ("B1" ... "B7") and the
+// `date` of the decision become a coloured tab on top of the box, like an
+// index tab in a book.
+#let decision(req, date, title, background, options, choice, consequences, evidence) = block(
   width: 100%,
   above: 1em,
   below: 1em,
@@ -59,7 +60,7 @@
     below: 0pt,
     sticky: true, // keeps the tab together with the start of the box
   )[
-    #text(fill: white, weight: "bold", size: 1.05em)[#req]
+    #text(fill: white, size: 1.05em)[*#req* #h(0.4em) | #h(0.4em) #date]
   ]
   #block(
     width: 100%,
@@ -80,6 +81,46 @@
 // Short inline reference to a commit hash.
 #let commit(hash) = raw(hash)
 
+// Small coloured label, used in the timeline.
+#let tag(label, color) = box(
+  fill: color,
+  inset: (x: 6pt, y: 3pt),
+  radius: 2pt,
+  baseline: 2pt,
+  text(fill: white, weight: "bold", size: 0.85em, label),
+)
+
+// Colour of entries that are not a requirement (setup, documentation).
+#let other-color = luma(130)
+
+// One entry of the timeline: date on the left, a dot on the vertical line,
+// and a card on the right. `tags` is an array of (label, colour) pairs.
+// `planned: true` draws the entry hollow and dashed.
+#let timeline-entry(date, tags, title, body, planned: false) = {
+  let accent = if tags.len() > 0 { tags.first().at(1) } else { other-color }
+  grid(
+    columns: (2.2cm, 16pt, 1fr),
+    column-gutter: 10pt,
+    align(right, text(weight: "bold", date)),
+    align(center, circle(
+      radius: 6pt,
+      fill: if planned { white } else { accent },
+      stroke: 2pt + accent,
+    )),
+    block(
+      width: 100%,
+      inset: (x: 10pt, y: 8pt),
+      radius: 3pt,
+      fill: if planned { none } else { accent.lighten(88%) },
+      stroke: if planned { (paint: accent, thickness: 1pt, dash: "dashed") } else { (left: 3pt + accent) },
+    )[
+      #set par(justify: false)
+      *#title* #h(6pt) #tags.map(t => tag(t.at(0), t.at(1))).join(h(4pt)) \
+      #if planned { text(fill: luma(110), body) } else { body }
+    ],
+  )
+}
+
 // ---------------------------------------------------------------------------
 = Development Overview
 
@@ -87,7 +128,7 @@
 
 Every requirement is built on its own Git branch (`b1`, `b2`, ...) that starts from the merged `master`. Game rules are written as small pure TypeScript functions that are covered by unit tests placed next to the code (`*.test.ts`). The React UI only draws the state and calls those functions, and it is checked by hand in the browser. The architecture is documented in `ARCHITECTURE.md`.
 
-The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. Planned next: B5, then B3 and B4 (battle engine), B7 and finally B6, once the saved state has settled.
+The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 followed because it only extends the battle engine. Planned next: B4 (same engine), then B5, B7 and finally B6, once the saved state has settled.
 
 == Responsibilities
 
@@ -96,51 +137,53 @@ Since I am working alone on this project, all of the responsibilities are up to 
 == Requirement status
 
 #table(
-  columns: (auto, 1fr, auto, 1fr),
+  columns: (auto, 1fr, auto, auto, 1fr),
   stroke: 0.5pt + luma(170),
-  table.header[*ID*][*Requirement*][*Status*][*Notes / evidence*],
-  [B1], [Shop economy: sell, reroll],      [#done],  [Branch `b1`, commit #commit("f8d84f5")],
-  [B2], [Backpack arrangement],            [#done],  [Branch `b2`, #fixme[add commit hash]],
-  [B3], [Status effects: poison, heal],    [#open],  [],
-  [B4], [Item sets and Burn],              [#open],  [],
-  [B5], [Resilient matchmaking],           [#open],  [],
-  [B6], [Save and resume],                 [#open],  [],
-  [B7], [Hall of fame],                    [#open],  [],
+  table.header[*ID*][*Requirement*][*Status*][*Date*][*Notes / evidence*],
+  [B1], [Shop economy: sell, reroll],      [#done],  [23 Nov], [Branch `b1`, commit #commit("f8d84f5")],
+  [B2], [Backpack arrangement],            [#done],  [23 Nov], [Branch `b2`, commit #commit("bcba98e")],
+  [B3], [Status effects: poison, heal],    [#done],  [24 Nov], [Branch `b3`, #fixme[add commit hash]],
+  [B4], [Item sets and Burn],              [#open],  [-], [],
+  [B5], [Resilient matchmaking],           [#open],  [-], [],
+  [B6], [Save and resume],                 [#open],  [-], [],
+  [B7], [Hall of fame],                    [#open],  [-], [],
 )
 
 == Requirements not implemented
 
-Not applicable yet: B3 to B7 are still open. #fixme[Update before submission and say why anything is missing.]
+Not applicable yet: B4 to B7 are still open. #fixme[Update before submission and say why anything is missing.]
+
+// ---------------------------------------------------------------------------
+= Timeline
+
+// The block fills the rest of the page, so the vertical line runs over the
+// whole page height and the entries are spread evenly along it. Entries that
+// are not done yet are placeholders (`planned: true`, hollow and dashed): when
+// a requirement is finished, give it a real date and text and drop `planned`.
+#block(height: 100% - 5em, width: 100%)[
+  #place(top + left, dx: 2.2cm + 10pt + 8pt - 1pt, line(angle: 90deg, length: 100%, stroke: 2pt + luma(200)))
+  #grid(
+    rows: (1fr,) * 8,
+    timeline-entry("22 Nov", (("Setup", other-color),), [Project setup], [Forked the template, read the README and `REQUIREMENTS.md`, and sorted out the Git workflow (branches, `master`, my fork).]),
+    timeline-entry("23 Nov", (("B1", req-colors.B1),), [Shop economy], [Selling, rerolling, a blocker for every action, shop after each battle and a hero card. Commit #commit("f8d84f5").]),
+    timeline-entry("23 Nov", (("B2", req-colors.B2),), [Backpack arrangement], [Click to select, move or swap, cancel. `ARCHITECTURE.md` and the diary written. Commit #commit("bcba98e").]),
+    timeline-entry("24 Nov", (("B3", req-colors.B3),), [Status effects: poison, heal], [Poison (burns every tick, 2-4 ticks) and heal as item effects, 6 new items. Commit #fixme[add hash].]),
+    timeline-entry("TBD", (("B5", req-colors.B5),), [Resilient matchmaking], [Planned next. Not started.], planned: true),
+    timeline-entry("TBD", (("B4", req-colors.B4),), [Item sets and Burn], [Planned. Not started.], planned: true),
+    timeline-entry("TBD", (("B7", req-colors.B7),), [Hall of fame], [Planned. Not started.], planned: true),
+    timeline-entry("TBD", (("B6", req-colors.B6),), [Save and resume], [Planned last. Not started.], planned: true),
+  )
+]
 
 // ---------------------------------------------------------------------------
 = Qualitative Goals
 
-These are the goals I chose. The evidence column states how I check them. Goals that depend on requirements that are not built yet are marked as planned.
+These are the goals I chose, each with how I check it. Resilience is still planned.
 
-#table(
-  columns: (auto, 1fr, 1fr, 1fr),
-  stroke: 0.5pt + luma(170),
-  table.header[*Goal*][*Why it matters here*][*Decisions / trade-offs*][*How I evaluate it*],
-  [Correctness],
-  [The economy and the backpack must never lose gold or items, and battles must be reproducible.],
-  [Rules are pure state-to-state functions. A refused action returns the same state object, so nothing is half-applied.],
-  [Unit tests, including random action sequences that check gold and item invariants.],
-
-  [Testability],
-  [Many rules must be verified quickly, and the project has to be explainable in the exam.],
-  [Rules live in plain TypeScript modules without React. The UI is thin.],
-  [`pnpm test`, lint, type check and build all pass.],
-
-  [Usability],
-  [Players should understand why an action is not possible and what the numbers mean.],
-  [Every action has a blocker; disabled buttons show the reason. Tooltips and a rules panel explain mechanics.],
-  [Manual walk-through of each screen. Accessibility checks are still open.],
-
-  [Resilience (planned)],
-  [Slow or failing API and refreshes must not break or exploit a run.],
-  [To be decided with B5 and B6.],
-  [`?fail=true`, `?latency=5000`, corrupted saved data. Not built yet.],
-)
+- *Correctness.* Gold and items must never be lost or duplicated, and battles must be reproducible. Rules are pure state-to-state functions, and a refused action returns the same state. Checked with unit tests, including random action sequences.
+- *Testability.* Many rules need to be verified quickly, and I have to explain the project in the exam. Rules live in plain TypeScript without React and the UI stays thin. Checked with `pnpm test`, lint, type check and build.
+- *Usability.* The player should see why an action is not possible and what the numbers mean. Every action has a blocker, so disabled buttons show the reason, and tooltips and the rules panel explain the mechanics. Checked by clicking through every screen.
+- *Resilience (planned).* A slow or failing API and a browser refresh must not break or exploit a run. To be decided with B5 and B6, and checked with `?fail=true`, `?latency=5000` and corrupted saved data.
 
 // ---------------------------------------------------------------------------
 = Architecture Overview
@@ -152,6 +195,7 @@ The application is a single page React app with a thin, stateless Express API. A
 
 #decision(
   "B1",
+  "23 Nov",
   [Decision 1: A blocker for every action, and refused actions change nothing],
   [B1 requires a shop, and along the shop actions that are atomic and that the interface explains why an action is not possible, with the same rule protecting the action itself. The starter's `buyItem` wrote into slot -1 when the backpack was full, so the player paid and lost the item.],
   [(a) Check only in the UI. (b) Throw errors from the rule functions. (c) For each action write a `...Blocker` function that returns the reason or `null`, and make the action return the unchanged state when blocked.],
@@ -162,6 +206,7 @@ The application is a single page React app with a thin, stateless Express API. A
 
 #decision(
   "B1",
+  "23 Nov",
   [Decision 2: Shopping happens before the first battle and right after each battle],
   [B1 says shop and backpack actions are only possible while shopping. Here I took a bit off, and considered more the UX experience as well. I tested the game around 10-15 minutes and I realised it was a bit annoying to double click from 'Onto round X' to 'Find opponent'. So I wanted the next round's shop to open right after a battle, above the result, instead of hiding it behind a result box. At that point the game is still in the `battle` phase.],
   [(a) Allow actions only in the `shop` phase and put the shop on a separate page after the result. (b) Treat the finished replay as part of shopping. Then lock the build once the player moves on.],
@@ -172,12 +217,24 @@ The application is a single page React app with a thin, stateless Express API. A
 
 #decision(
   "B2",
+  "23 Nov",
   [Decision 3: Keep B2 minimal: click to select, selection as UI state],
   [B2 needs select, move, swap, visible possible moves and cancel. Since I was working alone on this, I opted in for a simple approach where the user can click and item and other free available slots would get a a styling that showcased that they can be placed there or swapped with another item.],
   [(a) Drag and drop. (b) Click to select, then click a target. (c) Keep the selection in the game state or only in the component.],
   [Option (b) with the selection as local component state (`selectedUid` in `Backpack.tsx`). The rule is one pure function, `moveItem`, which moves or swaps and reuses the B1 guard. Cancel works by clicking the selected item again or with a Cancel button. Esc and drag and drop were left out on purpose.],
   [Nothing about the selection has to be saved or validated later (B6). Selecting by `uid` keeps the selection valid when items move. A refresh cancels a selection. The click handling is tested by hand only, while `moveItem` is unit tested.],
   [Branch `b2`, `run.ts`, `Backpack.tsx`, `run.test.ts`],
+)
+
+#decision(
+  "B3",
+  "24 Nov",
+  [Decision 4: Poison and heal as plain item effects with deterministic rolls],
+  [B3 needs the two effects, poison and heal that are shown in battle, to be deterministic, and usable by opponents. I decided on my own that poison should last a random-looking 2 to 4 ticks, but a battle has to give the same result every time, and arranging the backpack must not change a fight.],
+  [(a) A generic status-effect system with effect objects, ticking hooks and their own types. (b) Two more fields on `ItemEffects` (`poison`, `heal`) that the existing battle loop resolves. (c) Make the duration a fixed number per item.],
+  [Option (b). `poison` adds an application `{ stacks, ticksLeft }` to the enemy. `burnPoison` makes every poisoned fighter lose one HP per active stack at the end of each tick and ignores block. `healItem` heals up to max HP, after all damage of the tick. The duration is `rollPoisonTicks(tick, side)`: a roll of 2 to 4 from the existing `mulberry32`, seeded with the tick and the side.],
+  [The whole feature is about 60 lines in `battle.ts` and one new test file, and it can be explained in one diagram of the tick order. The roll is reproducible and cannot depend on item order, so a test can assert that reversing the backpack gives the same battle. The price is that there is no general effect framework, so B4's Burn adds its own small counter. Poison never gets cleansed and its per-stack timers are not shown, only the stack count.],
+  [Branch `b3`, `battle.ts`, `battle.test.ts`, `items.ts`, `oponents.ts`  `types.ts`, `rules.ts`],
 )
 
 // ---------------------------------------------------------------------------
@@ -194,7 +251,7 @@ I used Claude Code assistance during this game development. It aided me in the f
 
 *Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, and keeping B2 minimal.
 
-*How I checked the output:* unit tests (45 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
+*How I checked the output:* unit tests (59 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
 
 *What I changed or rejected:* 
 1. I rejected some design recommendations, as well as multiple UI implementations for B1, since from a UX perspective, the experience of playing the game was redundant. The first layout hid the shop behind the result box and kept an open, unusable shop page in later rounds, so both were reworked. 
@@ -218,6 +275,6 @@ So far: keeping the rules as pure functions with blockers made the UI easy to bu
   stroke: 0.5pt + luma(170),
   table.header[*Reference*][*What it shows*],
   [#commit("f8d84f5")], [B1: shop economy, post-battle shop, hero card (branch `b1`, merged into `master`).],
-  [Branch `b2`], [B2: backpack arrangement. #fixme[Add the commit hash when committed.]],
-  [`pnpm test`], [45 unit tests passing at the time of writing (`run`, `game` and `build` tests).],
+  [#commit("bcba98e")], [B2: backpack arrangement, `ARCHITECTURE.md` and diary update (branch `b2`).],
+  [`pnpm test`], [59 unit tests passing at the time of writing (`run`, `game`, `build` and `battle` tests).],
 )

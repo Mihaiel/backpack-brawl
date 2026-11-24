@@ -11,6 +11,9 @@
   --color-gold: #e3b04b;
   --color-life: #d6534a;
   --color-block: #a8a29e;
+
+  /* B3: Poision color*/
+  --color-poison: #7fb069;
 }
 
 @layer base {

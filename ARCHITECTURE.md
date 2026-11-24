@@ -133,9 +133,47 @@ So there are two shopping windows: the shop page before the very first battle, a
 ### Decisions and trade-offs
 
 * **Click to select** instead of drag and drop: it matches the requirement, works with keyboard and touch, and needs far less code.
-* **Position has no effect on a battle** (README rule), so arranging is only a convenience. Only the order of lines in the combat log changes. When B3 adds heal, effects should resolve in fixed phases and not in item order, so this stays true.
+* **Position has no effect on a battle** (README rule), so arranging is only a convenience. Only the order of lines in the combat log changes. B3 resolves effects in fixed phases, so this stays true.
 * **Left out on purpose** to keep it small: Esc to cancel, drag and drop, a separate click-logic module (the click handling is about ten lines in the component).
 * A refresh cancels a selection, because it is not saved.
+
+## B3: Status effects (poison and heal)
+
+Both effects are two more fields on the item (`ItemEffects`), resolved by the same battle loop that already handles damage and block. There is no separate status system.
+
+| Requirement | Implementation |
+|---|---|
+| Poison adds stacks to the enemy | An item with `poison: N` adds one application of N stacks to the enemy when it fires. |
+| A poisoned fighter regularly loses HP per stack | At the end of **every tick** each poisoned fighter loses `stacks × 1` HP (`burnPoison` in `battle.ts`). |
+| Poison stacks up and ignores block | Active stacks of all applications are added together; `burnPoison` never touches block. |
+| Heal restores own HP, never above max | `healItem` heals `min(heal, maxHp - hp)`. |
+| At least 3 items per effect | `items.ts`: Venom Dart, Toxic Flask, Spider Fang (poison); Herbal Salve, Golden Apple, Life Charm (heal). The shop rolls from the whole catalog, so they appear automatically. |
+| Opponents may use them | `server/opponents.js`: rounds 2 to 7 carry a poison or heal item. |
+| Shown in battle, log, rules and tooltips | `☠️ Poison: N` line per fighter, green log lines, `EFFECT_HELP` / `STATUS_HELP` tooltips and two lines in the rules panel. |
+
+### How a tick works now
+
+```text
+1. charge items, collect the ones that fire
+2. fired items deal damage, add block and add poison   (player first, then opponent)
+3. fired items heal their owner                         (after all damage of the tick)
+4. poison burns: HP -= stacks, every application ages by one tick
+5. knockout check (both down: the hero loses)
+```
+
+### Design
+
+* **Poison is a list of applications** `{ stacks, ticksLeft }` per fighter (`FighterState.poison`). The number shown in the UI is the sum of the stacks that are still active, so "stacks up" is literally a sum.
+* **Duration is rolled, but deterministic.** Every application lasts 2 to 4 ticks (`POISON_MIN_TICKS`, `POISON_MAX_TICKS`). `rollPoisonTicks(tick, side)` seeds the existing `mulberry32` with the tick and the side, so the same battle always rolls the same numbers and nothing else has to be passed in or saved.
+* **Fixed phases make the order of items irrelevant.** Inside one side an item only changes its owner (block, heal) or the enemy (damage, poison), and the roll does not depend on the item's position. So arranging the backpack (B2) cannot change a battle, only the order of lines in the log. A test checks this.
+* **Heal comes after damage** so that both sides are treated the same: a fighter at 4 HP who takes 5 and heals 3 in one tick ends at 2 HP and is not knocked out.
+* **Values are constants** in `battle.ts` and are used to build the rules text, so the explanation in the interface cannot drift from the numbers.
+
+### Decisions and trade-offs
+
+* **New items instead of changing the old ones.** Easier to explain and the old items keep their README values. The shop now rolls from 12 items instead of 6.
+* **Poison burns every tick** and the duration is what varies. This is simple to show (one counter) and Burn (B4) can differ from it by decaying and by respecting block.
+* **Left out on purpose:** poison cleanse, a per-stack timer in the UI, and poison in the hero card's damage per second (it only counts direct damage).
 
 ## Tests
 
@@ -146,5 +184,6 @@ Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
 | `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
+| `battle.test.ts` | Poison (duration roll, burn per tick, ignores block, stacking, knockout, log), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
 
 The UI is checked by hand; there are no component tests.
