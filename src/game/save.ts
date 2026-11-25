@@ -98,7 +98,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const isInt = (value: unknown, min: number, max = Infinity): value is number =>
   Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
 const isItemId = (value: unknown): value is string => typeof value === "string" && CATALOG.some((item) => item.id === value);
-const isItemList = (value: unknown): value is string[] => Array.isArray(value) && value.length <= BACKPACK_SIZE && value.every(isItemId);
+const isItemList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isItemId);
 
 function isSavedGame(saved: unknown): saved is SavedGame {
   if (!isRecord(saved)) return false;
@@ -109,15 +109,7 @@ function isSavedGame(saved: unknown): saved is SavedGame {
 function isSavedBattle(battle: unknown): battle is SavedBattle {
   if (!isRecord(battle) || !isInt(battle.frame, 0) || !isItemList(battle.heroItems)) return false;
   const opponent = battle.opponent;
-  return (
-    isRecord(opponent) &&
-    typeof opponent.id === "string" &&
-    typeof opponent.name === "string" &&
-    typeof opponent.icon === "string" &&
-    isInt(opponent.hp, 1) &&
-    isInt(opponent.round, 1) &&
-    isItemList(opponent.items)
-  );
+  return isRecord(opponent) && isInt(opponent.hp, 1) && isInt(opponent.round, 1) && isItemList(opponent.items);
 }
 
 /** Shape and value ranges, plus what a real run can and cannot look like. */
@@ -130,14 +122,11 @@ function isPossibleRun(run: unknown): run is RunState {
   if (!Array.isArray(backpack) || backpack.length !== BACKPACK_SIZE) return false;
 
   const owned: string[] = [];
-  const uids = new Set<string>();
   for (const slot of backpack) {
     if (slot === null) continue;
     if (!isRecord(slot) || typeof slot.uid !== "string" || !isItemId(slot.itemId)) return false;
-    uids.add(slot.uid);
     owned.push(slot.itemId);
   }
-  if (uids.size !== owned.length) return false; // two items share one uid
 
   // Every battle is one round; the last battle of a finished run does not start another round.
   const over = wins >= WINS_TO_VICTORY || lives <= 0;

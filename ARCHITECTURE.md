@@ -296,7 +296,7 @@ Saving only "settled" states, such as the shop, was rejected. It would let a pla
 
 ### What makes a save "impossible"
 
-All of these are one-line checks in `isPossibleRun`: values must be whole numbers in range (lives 0 to 3, wins 0 to 5), the shop has 4 slots and the backpack 6, only known item ids appear, and every `uid` is unique. The round must match the battles played (`1 + wins + lost lives`, or without the `1 +` once the run is over). The phase must match the outcome (a run that is over cannot be in the shop). And gold plus the prices of the owned items can never be more than all the gold the run has earned (`15 + 5 × (round − 1)`).
+All of these are one-line checks in `isPossibleRun`: values must be whole numbers in range (lives 0 to 3, wins 0 to 5), the shop has 4 slots and the backpack 6, only known item ids appear. The round must match the battles played (`1 + wins + lost lives`, or without the `1 +` once the run is over). The phase must match the outcome (a run that is over cannot be in the shop). And gold plus the prices of the owned items can never be more than all the gold the run has earned (`15 + 5 × (round − 1)`).
 
 ### Decisions and trade-offs
 
@@ -314,7 +314,7 @@ Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
 | `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. B5: one search at a time, a battle starts only for the current search and round, duplicate, late and old answers change nothing, and a failure returns to a usable shop. |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
-| `save.test.ts` | Restoring a shop (no free reroll), a cancelled search, a running replay (result counted once, also after a second refresh), a finished replay and a finished run; broken saves (not JSON, an unknown phase, wrong types) and impossible runs (ranges, round, gold, sizes, unknown items, duplicate uids, phase against outcome) all give no game. |
+| `save.test.ts` | Restoring a shop (no free reroll), a cancelled search, a running replay (result counted once, also after a second refresh), a finished replay and a finished run; broken saves (not JSON, an unknown phase, wrong types) and impossible runs (ranges, round, gold, sizes, unknown items, phase against outcome) all give no game. |
 | `battle.test.ts` | Poison (duration roll, hurt per tick, ignores block, stacking, knockout, log), burn (damage, block first, decay, stacking, knockout), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
 | `sets.test.ts` | Catalog has 2+ sets with 3+ items and Fire, set progress, activation at 2 items (duplicates count), bonus only for the set's items, catalog never changed, opponents get bonuses, Fire burns only when active. |
 

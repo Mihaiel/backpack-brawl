@@ -146,7 +146,7 @@ Since I am working alone on this project, all of the responsibilities are up to 
   [B3], [Status effects: poison, heal],    [#done],  [24 Nov], [Branch `b3`, commit #commit("0ed9411")],
   [B4], [Item sets and Burn],              [#done],  [24 Nov], [Branch `b4`, commit #commit("a7588d5")],
   [B5], [Resilient matchmaking],           [#done],  [25 Nov], [Branch `b5`, commit #commit("892a11a")],
-  [B6], [Save and resume],                 [#done],  [25 Nov], [Branch `b6`, #fixme[add commit hash]],
+  [B6], [Save and resume],                 [#done],  [25 Nov], [Branch `b6`, commit #commit("dde5276")],
   [B7], [Hall of fame],                    [#open],  [-], [],
 )
 
@@ -172,7 +172,7 @@ Not applicable yet: B7 is still open. #fixme[Update before submission and say wh
     timeline-entry("24 Nov", (("Refactor", req-colors.Refactor),), [Project restructure], [Pure game rules moved into `src/game/`, with a lint rule that keeps React out. Commit #commit("ac4997b").]),
     timeline-entry("24 Nov", (("B4", req-colors.B4),), [Item sets and Burn], [Fire and Guard sets with a bonus at 2 items, and Burn (hurts for 3 per stack, block absorbs it, decays). Commit #commit("a7588d5").]),
     timeline-entry("25 Nov", (("B5", req-colors.B5),), [Resilient matchmaking], [A search id makes the game ignore late, duplicate and old answers, and a failed search returns to the shop. Commit #commit("892a11a").]),
-    timeline-entry("25 Nov", (("B6", req-colors.B6),), [Save and resume], [The run is saved in the browser and restored through a checked pure function, with a policy for a refresh during a search or a replay. Commit #fixme[add hash].]),
+    timeline-entry("25 Nov", (("B6", req-colors.B6),), [Save and resume], [The run is saved in the browser and restored through a checked pure function, with a policy for a refresh during a search or a replay. Commit #commit("dde5276").]),
     timeline-entry("TBD", (("B7", req-colors.B7),), [Hall of fame], [Planned last. Not started.], planned: true),
   )
 ]
@@ -280,7 +280,7 @@ The application is a single page React app with a thin, stateless Express API. A
   [(a) Save only settled states, such as the shop. (b) Save the whole `GameState` including every battle frame. (c) Save the run and phase, and for a battle only its inputs and replay position, and recompute the frames.],
   [Option (c). `serializeGame` and `loadSavedGame` in `save.ts` are pure, and `GameProvider` writes the save after every change. The policy is: a search is cancelled and the player is back in the shop, a replay that was still running jumps to its end and its result counts at once (the existing `skipReplay`), and a replay that was already done stays as it was. `loadSavedGame` refuses anything that is not a possible run (ranges, sizes, unknown items, a round that does not match the battles played, too much gold, a phase that does not match the outcome) and returns `null`, so the game starts at the start page.],
   [Option (a) would have been the least code, but a refresh could then avoid a loss or give a free peek at the next shop. Option (b) would have needed a deep check of every frame, because a malformed frame can crash the battle view. With (c) the frames come from `simulateBattle`, so they cannot be malformed. The price is that a refresh can cost the player the chance to watch the replay, and that someone who edits the saved data into a possible but unearned state is not stopped.],
-  [Branch `b6`, `save.ts`, `save.test.ts`, `GameProvider.tsx`, `StartPage.tsx`],
+  [#commit("dde5276"), `save.ts`, `save.test.ts`, `GameProvider.tsx`, `StartPage.tsx`],
 )
 
 // ---------------------------------------------------------------------------
@@ -295,9 +295,9 @@ I used Claude Code assistance during this game development. It aided me in the f
 
 *Why did I use it?* Well for one part I was doing the whole project alone. Overall tt speeds up repetitive work (tests, boilerplate, documentation) and gives a quick second view on design options, while the decisions stayed with me.
 
-*Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, keeping B2 minimal, the rolled poison duration, the Fire set values, and the rules inside `fightBlocker`.
+*Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, keeping B2 minimal, the rolled poison duration, the Fire set values, the rules inside `fightBlocker`, removing the save version, and the plain `if` style of the `restore` function.
 
-*How I checked the output:* unit tests (106 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
+*How I checked the output:* unit tests (105 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
 
 *What I changed or rejected:*
 1. *B1 layout.* I rejected some design recommendations, as well as multiple UI implementations for B1, since from a UX perspective the experience of playing the game was redundant. The first layout hid the shop behind the result box and kept an open, unusable shop page in later rounds, so both were reworked.
@@ -317,7 +317,15 @@ I used Claude Code assistance during this game development. It aided me in the f
    - while a search runs, the reason "Searching for an opponent" is returned,
    - the offers are checked with `buyBlocker`, and if every offer is blocked, a fight is allowed too, so the player can never get stuck in a shop they cannot use,
    - otherwise, if the backpack is empty, the player is reminded to buy an item.
-   The consequence is that a player with no gold, or with nothing affordable, can fight with an empty backpack.
+   The consequence is that a player with no gold, or with nothing affordable, can fight with an empty backpack. The AI also pointed out two problems in my version. With no gold, `return null` comes before the "searching" check, so a second search can be started during a search, which B5 forbids. Also, `game.run.shop.length == 0` can never be true, because the shop always has 4 slots. At the time of writing, the code is unchanged, and the first problem is a known issue.
+
+8. *B6 save version.* The AI's save format had a `version` number, so that a save made by an older format would be refused. I asked what it was for. The AI explained that the other checks already reject most incompatible data, and that the number only helps when the shape stays valid but its meaning changes, which I do not expect in this project. I decided it was not necessary, and the AI removed it, together with its test.
+
+9. *B6 `restore` style.* The AI wrote the phase checks in `restore` as one-line conditional expressions. I found them hard to read and asked for a more primitive version, so I can explain it in the exam. It was rewritten with plain `if` blocks and the same behaviour.
+
+10. *B6 limits that I accepted.* The AI recommended the compact battle save, the refresh policy and the "Continue run" button, and I accepted them. It also pointed out two gaps: a player who has the game open in two tabs can overwrite a lost battle with the other tab's older state, and a hand-edited save that is possible but unearned is not stopped. The AI suggested listening for the browser's `storage` event as the fix for the first one. I did not implement it. Both are listed as known limitations.
+
+11. *Test page.* The AI recommended a development-only `/dev` page with controls for failing searches, broken saves and battle simulation, and then recommended doing B5 first. I followed that, and I did not build the page. I tested by hand with the API stopped, with `API_FAIL=true pnpm server`, and by editing the saved data in the browser console.
 
 #fixme[Keep this section up to date for B7.]
 
@@ -340,7 +348,7 @@ So far: keeping the rules as pure functions with blockers made the UI easy to bu
   [#commit("0ed9411")], [B3: poison and heal, 6 new items, `battle.test.ts` (branch `b3`).],
   [#commit("a7588d5")], [B4: item sets (Fire, Guard) and Burn, `sets.ts`, `sets.test.ts`, `SetBadge.tsx` (branch `b4`).],
   [#commit("892a11a")], [B5: resilient matchmaking, search id guard in `game.ts`, `game.test.ts` (branch `b5`).],
-  [Branch `b6`], [B6: save and resume, `save.ts`, `save.test.ts`, `GameProvider.tsx`. #fixme[Add the commit hash when committed.]],
+  [#commit("dde5276")], [B6: save and resume, `save.ts`, `save.test.ts`, `GameProvider.tsx` (branch `b6`).],
   [#commit("ac4997b")], [Restructure: pure rules in `src/game/` and the lint rule that guards the boundary.],
-  [`pnpm test`], [106 unit tests passing at the time of writing (`run`, `game`, `build`, `battle`, `sets` and `save` tests).],
+  [`pnpm test`], [105 unit tests passing at the time of writing (`run`, `game`, `build`, `battle`, `sets` and `save` tests).],
 )

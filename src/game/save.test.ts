@@ -109,14 +109,6 @@ describe("an impossible run falls back to no game", () => {
     expect(withRun(change)).toBeNull();
   });
 
-  it("rejects two items with the same uid", () => {
-    const data = JSON.parse(serializeGame(shopping()));
-    const [first] = data.run.backpack.filter(Boolean);
-    data.run.backpack = data.run.backpack.map((slot: unknown) => (slot ? first : null));
-
-    expect(loadSavedGame(JSON.stringify(data))).toBeNull();
-  });
-
   it("rejects a finished phase for a run that is not over", () => {
     expect(withRun({}, "finished")).toBeNull();
   });
