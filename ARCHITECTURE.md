@@ -36,7 +36,7 @@ The current architecture of the web application is a SPA with stateless API call
 
 ```text
 src/
-  game/        pure rules and their tests: types, items, sets, shop, run, battle, build, game
+  game/        pure rules and their tests: types, items, sets, shop, run, battle, build, game, save
   components/  presentational React parts
   pages/       one component per screen
   state/       GameProvider, useGame, RequireRoute
@@ -125,7 +125,7 @@ So there are two shopping windows: the shop page before the very first battle, a
 
 * **Post-battle shopping counts as shopping.** Round N's shop opens right after round N-1 ends, so it is available there. The cost is that the "shop" phase alone is not the only place where `updateRun` allows actions.
 * **Reroll replaces all four offers**, including ones already bought. A sold item does not return to the shop.
-* **Open point for B6:** a reroll consumes the stored seed, so when save and resume is added, the new seed must be saved together with the gold, or a refresh would give a free reroll.
+* **B6 closed this point:** a reroll consumes the stored seed, so the whole run, including the seed, is saved together with the gold. A refresh therefore gives no free reroll.
 
 ## B2: Backpack arrangement
 
@@ -263,6 +263,48 @@ One small piece of state, a search id, and one rule: only the answer to the sear
 * **A fast double click can still send a second request.** Its answer is ignored, because `startSearch` refused the second search and its id never matches.
 * **Left out on purpose:** automatic retries, a request timeout, a cancel button for the search.
 
+## B6: Save and resume
+
+The run is saved in the browser after every change and restored through one pure function that checks the data. Anything wrong falls back to the start page. The browser storage is touched only in `GameProvider`; `save.ts` works on plain strings, so it is tested without a browser.
+
+### What is saved
+
+| Part | Saved? |
+|---|---|
+| `run` (round, gold, lives, wins, seed, shop offers, backpack) | yes, all of it |
+| `phase` | yes |
+| `battle` | only its inputs and position: the opponent, the hero's item ids and the replay `frame`. The frames are recomputed with `simulateBattle`, which is deterministic, so a hand-edited battle cannot crash the battle view. |
+| `searchId`, `error` | no, they only mean something while a request is in flight |
+
+### The refresh policy
+
+| Where the refresh happens | What the player gets | What it prevents |
+|---|---|---|
+| In the shop | The same shop. Gold, seed and offers are saved. | A free reroll. |
+| During a search | Back in the shop, the search is cancelled. | Nothing was decided yet, and the opponent of a round is fixed, so it cannot give a different opponent. |
+| During a battle replay | The replay jumps to its end and the result counts now (`skipReplay`). | Avoiding a loss. |
+| After the replay, in the shop window | Exactly as before. `skipReplay` does nothing for a finished replay. | A second result. |
+| On the result page | The result page. | |
+
+Saving only "settled" states, such as the shop, was rejected. It would let a player refresh to avoid a loss, or to peek at the next shop after a reroll for free. The rule is shown to the player as a line in the rules panel.
+
+### Where it is in the code
+
+* `serializeGame(game)` and `loadSavedGame(json)` in `save.ts`. `loadSavedGame` returns `null` for no save, bad JSON and anything impossible, and then the game starts at the start page.
+* `GameProvider` reads the save once for its initial state and writes it in a `useEffect` on every change. Unavailable storage (private mode, blocked) is ignored.
+* The URL is kept by a refresh, so `RequireRoute` puts the player back on the screen that matches the restored phase. `StartPage` shows a "Continue run" button when a game exists, for someone who opens `/`.
+
+### What makes a save "impossible"
+
+All of these are one-line checks in `isPossibleRun`: values must be whole numbers in range (lives 0 to 3, wins 0 to 5), the shop has 4 slots and the backpack 6, only known item ids appear, and every `uid` is unique. The round must match the battles played (`1 + wins + lost lives`, or without the `1 +` once the run is over). The phase must match the outcome (a run that is over cannot be in the shop). And gold plus the prices of the owned items can never be more than all the gold the run has earned (`15 + 5 × (round − 1)`).
+
+### Decisions and trade-offs
+
+* **Compact battle save with recompute** instead of saving the frames: smaller, and the saved data cannot describe a battle that the rules could not produce.
+* **Policy "the result counts now"** for a replay that was still running, using the existing `skipReplay`, so there is no new rule to maintain.
+* **Not defended on purpose:** a player who edits the saved data by hand into a state that is possible but unearned. The checks only make sure that the game does not break and that the run is plausible.
+* **A corrupt save is left in place** until a new run overwrites it.
+
 ## Tests
 
 Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
@@ -272,6 +314,7 @@ Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
 | `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. B5: one search at a time, a battle starts only for the current search and round, duplicate, late and old answers change nothing, and a failure returns to a usable shop. |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
+| `save.test.ts` | Restoring a shop (no free reroll), a cancelled search, a running replay (result counted once, also after a second refresh), a finished replay and a finished run; broken saves (not JSON, an unknown phase, wrong types) and impossible runs (ranges, round, gold, sizes, unknown items, duplicate uids, phase against outcome) all give no game. |
 | `battle.test.ts` | Poison (duration roll, hurt per tick, ignores block, stacking, knockout, log), burn (damage, block first, decay, stacking, knockout), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
 | `sets.test.ts` | Catalog has 2+ sets with 3+ items and Fire, set progress, activation at 2 items (duplicates count), bonus only for the set's items, catalog never changed, opponents get bonuses, Fire burns only when active. |
 

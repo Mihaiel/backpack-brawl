@@ -76,7 +76,9 @@ export function startSearch(game: GameState, id: string): GameState {
   return { ...game, phase: "searching", searchId: id, error: null };
 }
 
-/** B5: only the response of the search that is running right now may change the game. */
+// B5: only the response of the search that is running right now may change the game.
+// B5: This is where the check happens, we check if it matches the already existing id inside the gameState and if not,
+// we just drop it (which happens in the next function underneath called searchFailed)
 const isCurrentSearch = (game: GameState, id: string) => game.phase === "searching" && game.searchId === id;
 
 /** B5: the search failed: back to a usable shop with the message. Answers of old searches are ignored. */

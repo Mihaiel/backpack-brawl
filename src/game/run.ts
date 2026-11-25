@@ -129,6 +129,8 @@ export function rerollShop(state: RunState): RunState {
 
 export type RunOutcome = "victory" | "defeat";
 
+/*================== ALREADY THERE: VICTORY/DEFEAT LOGIC ==================  */
+
 /** `victory` / `defeat` once the run is over, otherwise `null`. */
 export function runOutcome(state: RunState): RunOutcome | null {
   if (state.wins >= WINS_TO_VICTORY) return "victory";
@@ -147,3 +149,5 @@ export function applyBattleResult(state: RunState, winner: Side): RunState {
   const scored = winner === "player" ? { ...state, wins: state.wins + 1 } : { ...state, lives: state.lives - 1 };
   return runOutcome(scored) ? scored : startNextRound(scored);
 }
+
+// =====================================================================================================

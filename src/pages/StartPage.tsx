@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router";
-import { ROUTES } from "../game/game";
+import { ROUTES, routeForGame } from "../game/game";
 import { START_GOLD, START_LIVES, WINS_TO_VICTORY } from "../game/run";
 import { useGame } from "../state/GameContext";
 
 export function StartPage() {
-  const { startNewRun } = useGame();
+  const { game, startNewRun } = useGame();
   const navigate = useNavigate();
 
   function handleNewRun() {
@@ -25,6 +25,15 @@ export function StartPage() {
           🏆 Reach {WINS_TO_VICTORY} wins before you lose all {START_LIVES} lives. You start with {START_GOLD} 🪙.
         </li>
       </ul>
+      {game && (
+        <button
+          type="button"
+          onClick={() => navigate(routeForGame(game))}
+          className="rounded-md border-2 border-gold px-5 py-2 font-display font-bold text-gold hover:bg-gold/10"
+        >
+          ▶ Continue run
+        </button>
+      )}
       <button type="button" onClick={handleNewRun} autoFocus className="rounded-md bg-gold px-5 py-2 font-display font-bold text-ink hover:brightness-110">
         🎒 New run
       </button>
