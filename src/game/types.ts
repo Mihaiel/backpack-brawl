@@ -138,6 +138,9 @@ export interface GameState {
   run: RunState;
   /** Set while `phase === "battle"`. */
   battle: BattleReplay | null;
-  /** Last opponent-search error, shown in the shop. */
+
+  // B5: id of the search that is running right now; only its response counts.
+  searchId: string | null;
+  // Last opponent-search error, shown in the shop
   error: string | null;
 }

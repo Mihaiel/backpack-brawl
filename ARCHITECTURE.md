@@ -49,10 +49,10 @@ Dependencies only point one way: `components`, `pages` and `state` import from `
 ## Game state machine
 
 ```text
- (no game) ──startNewRun──▶ shop ──startSearch──▶ searching ──startBattle──▶ battle
-                             ▲                        │ (searchFailed: error only)
-                             │                        ▼
-                             └──── leaveBattle ◀── replay done ──▶ finished (victory / defeat)
+ (no game) ──startNewRun──▶ shop ──startSearch(id)──▶ searching ──startBattle(id)──▶ battle
+                             ▲  ▲                         │                              │
+                             │  └── searchFailed(id) ◀────┘ (message shown, retry)       ▼
+                             └──────────── leaveBattle ◀── replay done ──▶ finished (victory / defeat)
 ```
 
 ## Backpack and shop: where the logic lives
@@ -239,6 +239,30 @@ Sets are applied when a fighter is built, so the battle never needs to know abou
 * **Balance was checked with a quick simulation.** At 2 damage per stack a Fire build did about the same total damage as plain items of the same price (212 against 204 in 60 ticks), so there was no reason to pick the set. At 3 it does about 25% more (257 against 204), which rewards the set without making fights too short. Fire builds still do not beat the later opponents on their own. Rounds 3 and 5 got Fire opponents. Opponents that already carried two Guard items now get the Guard bonus too.
 * **Left out on purpose:** more than one set per item, a bonus that scales with 3 or 4 items, and burn in the hero card's damage per second.
 
+## B5: Resilient matchmaking
+
+One small piece of state, a search id, and one rule: only the answer to the search that is running right now may change the game. The guards are pure functions in `game.ts`, in the same style as the B1 blockers. Before B5, a failed search left the game in the `searching` phase with the shop locked, and a duplicate or late response could start or restart a battle.
+
+| Requirement | Implementation |
+|---|---|
+| I see that a search is running | `FightBar` shows "Searching the arena…" and a disabled "Searching…" button while `phase === "searching"`. |
+| I cannot start a second search | `fightBlocker` returns "Searching for an opponent" in that phase, and `startSearch` calls it, so the button and the action share one rule. |
+| A failed or unavailable API returns me to a usable shop with a message | `searchFailed` goes back to `phase: "shop"` with the error text (the server's own message, or "Opponent search failed (status)" from `api.ts`). |
+| I can try again | The phase is `shop` again, so the same button works, and `startSearch` clears the old error. |
+| A battle only starts for the current round and search | `startBattle(game, opponent, id)` checks that the phase is `searching`, that `game.searchId === id`, and that `opponent.round === game.run.round`. |
+| A slow, duplicate or late response never restarts a battle, starts one outside a search, or applies a result twice | Any other response returns the same state. A second answer finds `searchId` already cleared. The result of a battle is still applied exactly once, when the replay reaches its last frame (`showFrame`). |
+
+### Design
+
+* **`GameState.searchId`** is the id of the running search, or `null`. `ShopPage` makes it (`crypto.randomUUID()`) and passes it to `startSearch`, `startBattle` and `searchFailed`, so each request only ever affects its own search.
+* **One guard.** `isCurrentSearch(game, id)` (phase is `searching` and the ids match) is used by both `startBattle` and `searchFailed`. A late answer of an old search, for example after a failure and a retry, has a different id and is ignored.
+
+### Decisions and trade-offs
+
+* **The id lives in the game state** and not in a component, so the rule is pure and can be tested without a browser. Cancelling old requests with `AbortController` would have needed bookkeeping per component.
+* **A fast double click can still send a second request.** Its answer is ignored, because `startSearch` refused the second search and its id never matches.
+* **Left out on purpose:** automatic retries, a request timeout, a cancel button for the search.
+
 ## Tests
 
 Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
@@ -246,7 +270,7 @@ Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
 | File | Covers |
 |---|---|
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
-| `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. |
+| `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. B5: one search at a time, a battle starts only for the current search and round, duplicate, late and old answers change nothing, and a failure returns to a usable shop. |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
 | `battle.test.ts` | Poison (duration roll, hurt per tick, ignores block, stacking, knockout, log), burn (damage, block first, decay, stacking, knockout), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
 | `sets.test.ts` | Catalog has 2+ sets with 3+ items and Fire, set progress, activation at 2 items (duplicates count), bonus only for the set's items, catalog never changed, opponents get bonuses, Fire burns only when active. |

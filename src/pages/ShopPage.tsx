@@ -11,15 +11,20 @@ export function ShopPage() {
   const { run, phase } = game;
 
   // Once the opponent is found the phase becomes "battle" and RequireRoute redirects to the battle page.
+  // Every time we press "Find Opponent" this would generate 
   async function handleFindOpponent() {
+    // If finding a game is blocked for some reason
     if (fightBlocker(game) !== null) return;
-    update(startSearch);
+
+    // We genearte a unique ID for that search and store it inside the gamestate, so GameState.searchId
+    const id = crypto.randomUUID(); // B5: only the answer to this search may start the battle
+    update((current) => startSearch(current, id));
     try {
       const opponent = await fetchOpponent(run.round);
-      update((current) => startBattle(current, opponent));
+      update((current) => startBattle(current, opponent, id));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Opponent search failed.";
-      update((current) => searchFailed(current, message));
+      const message = error instanceof Error ? error. message : "Opponent search failed.";
+      update((current) => searchFailed(current, id, message));
     }
   }
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceReplay,
+  fightBlocker,
   isReplayDone,
   leaveBattle,
   newGame,
+  searchFailed,
   shopPageOffersShop,
   shopLock,
   skipReplay,
@@ -22,8 +24,8 @@ function shopping(): GameState {
   return { ...game, run: { ...buyItem({ ...game.run, shop: ["pot-lid", null, null, null] }, 0) } };
 }
 
-const searching = () => startSearch(shopping());
-const inBattle = () => startBattle(searching(), opponent);
+const searching = () => startSearch(shopping(), "search-1");
+const inBattle = () => startBattle(searching(), opponent, "search-1");
 const afterBattle = () => skipReplay(inBattle());
 
 describe("shopLock", () => {
@@ -132,5 +134,56 @@ describe("updateRun", () => {
     expect(left.phase).toBe("shop");
     expect(left.run.backpack.filter(Boolean)).toHaveLength(2);
     expect(left.run.gold).toBe(7);
+  });
+});
+
+// B5: a battle only ever starts for the current search.
+describe("searching for an opponent", () => {
+  it("refuses a second search while one is running", () => {
+    const game = searching();
+
+    expect(fightBlocker(game)).toBe("Searching for an opponent");
+    expect(startSearch(game, "search-2")).toBe(game);
+  });
+
+  it("starts the battle when the current search is answered", () => {
+    const game = inBattle();
+
+    expect(game.phase).toBe("battle");
+    expect(game.searchId).toBeNull();
+    expect(game.battle?.opponent).toBe(opponent);
+  });
+
+  it("ignores answers from another search, for another round, or outside a search", () => {
+    const game = searching();
+
+    expect(startBattle(game, opponent, "old-search")).toBe(game);
+    expect(startBattle(game, { ...opponent, round: 2 }, "search-1")).toBe(game);
+    expect(startBattle(shopping(), opponent, "search-1").phase).toBe("shop");
+  });
+
+  it("never restarts a battle: a duplicate or late answer changes nothing", () => {
+    const replaying = advanceReplay(inBattle());
+    const done = afterBattle();
+
+    expect(startBattle(replaying, opponent, "search-1")).toBe(replaying);
+    expect(startBattle(done, opponent, "search-1")).toBe(done);
+  });
+
+  it("goes back to a usable shop when the search fails, and clears the message on retry", () => {
+    const failed = searchFailed(searching(), "search-1", "The arena gates are shut.");
+
+    expect(failed.phase).toBe("shop");
+    expect(failed.error).toBe("The arena gates are shut.");
+    expect(shopLock(failed)).toBeNull();
+    expect(startSearch(failed, "search-2").error).toBeNull();
+  });
+
+  it("ignores the failure or the late answer of an old search", () => {
+    const retry = startSearch(searchFailed(searching(), "search-1", "timeout"), "search-2");
+
+    expect(searchFailed(retry, "search-1", "late error")).toBe(retry);
+    expect(startBattle(retry, opponent, "search-1")).toBe(retry);
+    expect(startBattle(retry, opponent, "search-2").phase).toBe("battle");
   });
 });

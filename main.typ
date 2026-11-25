@@ -129,7 +129,7 @@
 
 Every requirement is built on its own Git branch (`b1`, `b2`, ...) that starts from the merged `master`. Game rules are written as small pure TypeScript functions that are covered by unit tests placed next to the code (`*.test.ts`). The React UI only draws the state and calls those functions, and it is checked by hand in the browser. The architecture is documented in `ARCHITECTURE.md`.
 
-The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 followed because it only extends the battle engine. Planned next: B5, then B7 and finally B6, once the saved state has settled.
+The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 and B4 followed because they only extend the battle engine, then B5. Planned next: B7 and finally B6, once the saved state has settled.
 
 == Responsibilities
 
@@ -144,15 +144,15 @@ Since I am working alone on this project, all of the responsibilities are up to 
   [B1], [Shop economy: sell, reroll],      [#done],  [23 Nov], [Branch `b1`, commit #commit("f8d84f5")],
   [B2], [Backpack arrangement],            [#done],  [23 Nov], [Branch `b2`, commit #commit("bcba98e")],
   [B3], [Status effects: poison, heal],    [#done],  [24 Nov], [Branch `b3`, commit #commit("0ed9411")],
-  [B4], [Item sets and Burn],              [#done],  [24 Nov], [Branch `b4`, #fixme[add commit hash]],
-  [B5], [Resilient matchmaking],           [#open],  [-], [],
+  [B4], [Item sets and Burn],              [#done],  [24 Nov], [Branch `b4`, commit #commit("a7588d5")],
+  [B5], [Resilient matchmaking],           [#done],  [25 Nov], [Branch `b5`, #fixme[add commit hash]],
   [B6], [Save and resume],                 [#open],  [-], [],
   [B7], [Hall of fame],                    [#open],  [-], [],
 )
 
 == Requirements not implemented
 
-Not applicable yet: B5 to B7 are still open. #fixme[Update before submission and say why anything is missing.]
+Not applicable yet: B6 and B7 are still open. #fixme[Update before submission and say why anything is missing.]
 
 // ---------------------------------------------------------------------------
 = Timeline
@@ -170,8 +170,8 @@ Not applicable yet: B5 to B7 are still open. #fixme[Update before submission and
     timeline-entry("23 Nov", (("B2", req-colors.B2),), [Backpack arrangement], [Click to select, move or swap, cancel. `ARCHITECTURE.md` and the diary written. Commit #commit("bcba98e").]),
     timeline-entry("24 Nov", (("B3", req-colors.B3),), [Status effects: poison, heal], [Poison (burns every tick, 2-4 ticks) and heal as item effects, 6 new items. Commit #commit("0ed9411").]),
     timeline-entry("24 Nov", (("Refactor", req-colors.Refactor),), [Project restructure], [Pure game rules moved into `src/game/`, with a lint rule that keeps React out. Commit #commit("ac4997b").]),
-    timeline-entry("24 Nov", (("B4", req-colors.B4),), [Item sets and Burn], [Fire and Guard sets with a bonus at 2 items, and Burn (hurts for 3 per stack, block absorbs it, decays). Commit #fixme[add hash].]),
-    timeline-entry("TBD", (("B5", req-colors.B5),), [Resilient matchmaking], [Planned next. Not started.], planned: true),
+    timeline-entry("24 Nov", (("B4", req-colors.B4),), [Item sets and Burn], [Fire and Guard sets with a bonus at 2 items, and Burn (hurts for 3 per stack, block absorbs it, decays). Commit #commit("a7588d5").]),
+    timeline-entry("25 Nov", (("B5", req-colors.B5),), [Resilient matchmaking], [A search id makes the game ignore late, duplicate and old answers, and a failed search returns to the shop. Commit #fixme[add hash].]),
     timeline-entry("TBD", (("B7", req-colors.B7),), [Hall of fame], [Planned. Not started.], planned: true),
     timeline-entry("TBD", (("B6", req-colors.B6),), [Save and resume], [Planned last. Not started.], planned: true),
   )
@@ -191,23 +191,6 @@ These are the goals I chose, each with how I check it. Resilience is still plann
 = Architecture Overview
 
 The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. Item sets (B4) are defined in one table in `sets.ts`, applied when a fighter is built, and shown in the interface with the `SetBadge` component. The details, diagrams and the tables for B1 to B4 are in `ARCHITECTURE.md`.
-
-== Where the B4 values are decided
-
-B4 says the exact tick, stack, damage and decay values are my choice, and that they must be deterministic and explained in the interface. They are all named constants, so they can be found and changed in one place, and the rules text is built from the same constants.
-
-#table(
-  columns: (auto, auto, 1fr),
-  stroke: 0.5pt + luma(170),
-  table.header[*Value*][*Where*][*Meaning*],
-  [Tick], [`TICK_SECONDS = 0.5`, `battle.ts`], [Burn hurts at the end of every tick (every 0.5 s of battle time).],
-  [Stacks added], [Fire bonus `{ burn: 1 }`, `SETS` in `sets.ts`], [Every Fire item adds 1 burn stack to the enemy when it fires.],
-  [Damage], [`BURN_DAMAGE_PER_STACK = 3`, `battle.ts`], [Each stack costs 3 HP per tick, which is more than poison (1). Block absorbs it first. It was 2 at first, but a simulation showed Fire then did no more damage than plain items of the same price, so I raised it to 3.],
-  [Decay], [`BURN_DECAY_PER_TICK = 1`, `battle.ts`], [After hurting, burn loses 1 stack, so it wears off.],
-  [Set size], [`SET_MIN_ITEMS = 2`, `sets.ts`], [A set bonus is active from 2 items on.],
-)
-
-Burn is deterministic because it has no random roll. The same fighters always give the same battle. It is explained in the rules panel (the "Item sets" section and a burn line in the "Battle" section, built in `rules.ts`) and in the tooltips of the burn counter and of the burn effect on item cards. It is shown in the battle view as a `Burn: N` counter for each fighter, and in the combat log as orange lines for "sets on fire" and "Burn hurts ...".
 
 // ---------------------------------------------------------------------------
 = Important Decisions
@@ -275,7 +258,18 @@ Burn is deterministic because it has no random roll. The same fighters always gi
   [(a) Look up the active sets inside the battle loop on every tick. (b) Resolve the bonus once, when `buildFighter` creates the fighter. For Burn: (c) a list of applications with timers like poison, or (d) one counter that loses a stack every tick.],
   [Options (b) and (d). `applySetBonuses` adds the bonus effects (Fire: +1 burn, Guard: +2 block) to every item of an active set, and the result is an ordinary `Fighter`, so `simulateBattle` knows nothing about sets. Burn is one number that hurts for 3 per stack through the same block-first `hit()` helper as normal damage, then loses 1 stack per tick. The sets themselves are defined in one table, `SETS` in `sets.ts` (id, name, icon and bonus), and each item names its set in `items.ts`. The component `SetBadge` shows which set an item belongs to, in the shop, the backpack, the hero card and the battle view, and it is highlighted while the bonus is active. Two opponents were changed to use Fire items (rounds 3 and 5), so the bonus is visible on both sides.],
   [Opponents get their bonuses for free, because they are built by the same function, and the battle engine only grew by the burn counter. Because all bonuses are decided before the first tick, the order of the backpack still cannot change a fight. The price is that a bonus can only add item effects and cannot react to something during the battle. Burn needs no random roll, which makes it easy to explain next to poison.],
-  [Branch `b4`, `sets.ts`, `sets.test.ts`, `SetBadge.tsx`, `battle.ts`, `opponents.js`],
+  [#commit("a7588d5"), `sets.ts`, `sets.test.ts`, `SetBadge.tsx`, `battle.ts`, `opponents.js`],
+)
+
+#decision(
+  "B5",
+  "25 Nov",
+  [Decision 7: A search id in the game state decides which answer may start a battle],
+  [B5 says a battle may only start for the current round and the current search, and a slow, duplicate or late response must never restart a battle, start one outside a search, or apply a result twice. In the starter, `startSearch` could run twice, `searchFailed` left the game stuck in the `searching` phase, and `startBattle` accepted any opponent in any phase.],
+  [(a) Cancel old requests with `AbortController` in the component. (b) Keep a request counter in a `useRef` in the page. (c) Keep a search id in `GameState` and let the pure transition functions check it.],
+  [Option (c). `startSearch(game, id)` stores the id and is refused while another search runs (`fightBlocker` says why, so the button and the action share one rule). `startBattle` and `searchFailed` take the id and only act if the phase is `searching` and the ids match, and `startBattle` also checks that the opponent is for the current round. A failure goes back to the `shop` phase with the message.],
+  [Every case in the requirement becomes a pure function call that a unit test can check by comparing the returned state with the input, with no browser or fake timers. The price is that a fast double click still sends a second HTTP request, but its answer is ignored. I checked this in the browser with a triple click, which sent three requests and started one battle.],
+  [Branch `b5`, `game.ts`, `game.test.ts`, `ShopPage.tsx`],
 )
 
 // ---------------------------------------------------------------------------
@@ -292,7 +286,7 @@ I used Claude Code assistance during this game development. It aided me in the f
 
 *Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, and keeping B2 minimal.
 
-*How I checked the output:* unit tests (76 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
+*How I checked the output:* unit tests (82 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
 
 *What I changed or rejected:* 
 1. I rejected some design recommendations, as well as multiple UI implementations for B1, since from a UX perspective, the experience of playing the game was redundant. The first layout hid the shop behind the result box and kept an open, unusable shop page in later rounds, so both were reworked. 
@@ -318,7 +312,8 @@ So far: keeping the rules as pure functions with blockers made the UI easy to bu
   [#commit("f8d84f5")], [B1: shop economy, post-battle shop, hero card (branch `b1`, merged into `master`).],
   [#commit("bcba98e")], [B2: backpack arrangement, `ARCHITECTURE.md` and diary update (branch `b2`).],
   [#commit("0ed9411")], [B3: poison and heal, 6 new items, `battle.test.ts` (branch `b3`).],
-  [Branch `b4`], [B4: item sets (Fire, Guard) and Burn, `sets.ts`, `sets.test.ts`. #fixme[Add the commit hash when committed.]],
+  [#commit("a7588d5")], [B4: item sets (Fire, Guard) and Burn, `sets.ts`, `sets.test.ts`, `SetBadge.tsx` (branch `b4`).],
+  [Branch `b5`], [B5: resilient matchmaking, search id guard in `game.ts`, `game.test.ts`. #fixme[Add the commit hash when committed.]],
   [#commit("ac4997b")], [Restructure: pure rules in `src/game/` and the lint rule that guards the boundary.],
-  [`pnpm test`], [76 unit tests passing at the time of writing (`run`, `game`, `build`, `battle` and `sets` tests).],
+  [`pnpm test`], [82 unit tests passing at the time of writing (`run`, `game`, `build`, `battle` and `sets` tests).],
 )

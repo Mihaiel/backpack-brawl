@@ -2,7 +2,7 @@ import { getItem } from "./items";
 import { BACKPACK_SIZE, rollShop } from "./shop";
 import type { RunState, Side } from "./types";
 
-export const START_GOLD = 10;
+export const START_GOLD = 15;
 export const START_LIVES = 3;
 export const WINS_TO_VICTORY = 5;
 export const GOLD_PER_ROUND = 5;
@@ -42,6 +42,8 @@ export function sellPrice(itemId: string): number {
  * Why an offer can't be bought right now, or `null` if it can.
  * The same check guards `buyItem`, so the UI and the rule can't disagree.
  */
+
+// This pretty much checks if the item is buyable or not
 export function buyBlocker(state: RunState, offerIndex: number): string | null {
   const itemId = state.shop[offerIndex];
   if (!itemId) return "Already sold";
