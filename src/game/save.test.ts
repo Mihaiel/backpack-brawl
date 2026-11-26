@@ -8,7 +8,7 @@ const opponent: Opponent = { id: "test", name: "Test Dummy", icon: "🧪", hp: 2
 
 /** A round 1 shop game that owns two items. */
 function shopping(): GameState {
-  const game = newGame(1);
+  const game = newGame(1, "run-1");
   const run = buyItem(buyItem({ ...game.run, shop: ["pot-lid", "chipped-dagger", null, null] }, 0), 1);
   return { ...game, run };
 }
@@ -47,8 +47,9 @@ describe("resuming a run", () => {
     expect(roundTrip(done)).toEqual(done);
   });
 
-  it("restores a finished run", () => {
-    const finished: GameState = { phase: "finished", run: { ...newGame(1).run, wins: 5, round: 5 }, battle: null, searchId: null, error: null };
+  it("restores a finished run, with its id and whether it is in the hall of fame", () => {
+    const game = newGame(1, "run-1");
+    const finished: GameState = { ...game, phase: "finished", run: { ...game.run, wins: 5, round: 5 }, submitted: true };
 
     expect(roundTrip(finished)).toEqual(finished);
   });
@@ -73,6 +74,11 @@ describe("a broken save falls back to no game", () => {
     expect(load({ ...saved(), phase: "pause" })).toBeNull();
     expect(load({ ...saved(), run: { ...saved().run, gold: "10" } })).toBeNull();
     expect(load({ ...saved(), run: undefined })).toBeNull();
+  });
+
+  it("rejects a save without a run id or submitted flag (for example one from before B7)", () => {
+    expect(load({ ...saved(), runId: undefined })).toBeNull();
+    expect(load({ ...saved(), submitted: "yes" })).toBeNull();
   });
 
   it("rejects a battle save that is incomplete or points at unknown items", () => {

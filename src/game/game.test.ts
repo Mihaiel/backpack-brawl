@@ -4,6 +4,7 @@ import {
   fightBlocker,
   isReplayDone,
   leaveBattle,
+  markSubmitted,
   newGame,
   searchFailed,
   shopPageOffersShop,
@@ -11,6 +12,7 @@ import {
   skipReplay,
   startBattle,
   startSearch,
+  submitBlocker,
   updateRun,
 } from "./game";
 import { buyItem, moveItem, rerollShop, sellItem } from "./run";
@@ -20,7 +22,7 @@ const opponent: Opponent = { id: "test", name: "Test Dummy", icon: "🧪", hp: 2
 
 /** A run in the shop phase that already owns an item, so it may look for an opponent. */
 function shopping(): GameState {
-  const game = newGame(1);
+  const game = newGame(1, "run-1");
   return { ...game, run: { ...buyItem({ ...game.run, shop: ["pot-lid", null, null, null] }, 0) } };
 }
 
@@ -185,5 +187,35 @@ describe("searching for an opponent", () => {
     expect(searchFailed(retry, "search-1", "late error")).toBe(retry);
     expect(startBattle(retry, opponent, "search-1")).toBe(retry);
     expect(startBattle(retry, opponent, "search-2").phase).toBe("battle");
+  });
+});
+
+describe("B7: hall of fame submission", () => {
+  const finished = (): GameState => ({ ...shopping(), phase: "finished", run: { ...shopping().run, wins: 5, round: 5 } });
+
+  it("is allowed once the run is over and a name is entered", () => {
+    expect(submitBlocker(finished(), "Mika")).toBeNull();
+  });
+
+  it.each([
+    ["the run is not over", shopping(), "Mika", "The run is not over"],
+    ["no name", finished(), "   ", "Enter your name"],
+    ["already submitted", { ...finished(), submitted: true }, "Mika", "Already in the hall of fame"],
+  ])("is refused when %s", (_case, game, name, reason) => {
+    expect(submitBlocker(game, name)).toBe(reason);
+  });
+
+  it("marks the run as submitted", () => {
+    expect(markSubmitted(finished(), "run-1").submitted).toBe(true);
+  });
+
+  it("ignores the answer for another run (a new run was started meanwhile)", () => {
+    const game = finished();
+    expect(markSubmitted(game, "old-run")).toBe(game);
+  });
+
+  it("changes nothing the second time", () => {
+    const once = markSubmitted(finished(), "run-1");
+    expect(markSubmitted(once, "run-1")).toBe(once);
   });
 });

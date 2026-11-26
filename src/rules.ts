@@ -56,6 +56,7 @@ export const RULES: RuleSection[] = [
       `Each battle is one round: a win gives +1 win, a loss costs 1 life.`,
       `Opponents get tougher every round.`,
       `Your run is saved in this browser. If you refresh, it continues where you left it. A search that was running is cancelled, and a battle that was still playing counts as finished at once.`,
+      `When the run is over, enter your name to put it in the 🏆 hall of fame. The best runs have more wins, then fewer rounds.`,
     ],
   },
   {

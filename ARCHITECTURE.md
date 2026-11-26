@@ -10,7 +10,7 @@ The current architecture of the web application is a SPA with stateless API call
 ┌───────────────────────── Browser (Vite :5174) ─────────────────────────┐
 │ main.tsx → <GameProvider> (useState<GameState|null>) → RouterProvider  │
 │                                                                        │
-│ pages/       Start  Shop  Battle  Result    (Layout + RequireRoute)    │
+│ pages/       Start Shop Battle Result HallOfFame (Layout, RequireRoute)│
 │ components/  RunHeader FightBar RulesPanel BattleView RunOver          │
 │              ShopArea → Shop, Backpack, HeroCard, ItemCard             │
 │ src/game/: pure rules, no React ───────────────────────────────────────│
@@ -22,14 +22,16 @@ The current architecture of the web application is a SPA with stateless API call
 │ items.ts   CATALOG, getItem   sets.ts   SETS, set bonuses, setProgress │
 │ types.ts   all shared types                                            │
 │ next to it in src/ ────────────────────────────────────────────────────│
-│ rules.ts   tooltip and rule texts    api.ts    fetchOpponent(round)    │
+│ rules.ts   tooltip and rule texts                                      │
+│ api.ts     fetchOpponent(round), fetchHallOfFame, submitRun(run)       │
 └───────────────────────────────┬────────────────────────────────────────┘
                                 │ /api (Vite proxy → :4200)
                       ┌─────────▼──────────┐
-                      │ Express server     │  GET /api/health
-                      │ server/index.js    │  GET /api/opponents?round=
-                      │ opponents.js table │  stateless, latency/fail params
-                      └────────────────────┘
+                      │ Express server     │  GET  /api/health
+                      │ server/index.js    │  GET  /api/opponents?round=
+                      │ opponents.js table │  GET  /api/hall-of-fame
+                      │ hallOfFame.js      │  POST /api/hall-of-fame (JSON file)
+                      └────────────────────┘  latency/fail params on opponents
 ```
 
 ## Folder layout
@@ -41,7 +43,12 @@ src/
   pages/       one component per screen
   state/       GameProvider, useGame, RequireRoute
   rules.ts     rule and tooltip texts built from the game constants
-  api.ts       the opponent HTTP request
+  api.ts       the HTTP requests (opponent, hall of fame)
+server/
+  index.js       Express routes; reads and writes the hall of fame file
+  hall-of-fame.json  B7: the stored runs (written by the API, git-ignored)
+  opponents.js   opponent table per round
+  hallOfFame.js  B7: validate, rank and store runs (plain functions, tested)
 ```
 
 Dependencies only point one way: `components`, `pages` and `state` import from `game/`, and `game/` imports nothing from them. Tests sit next to the code they test. Unless a path is given, file names in the rest of this document are inside `src/game/`.
@@ -275,6 +282,7 @@ The run is saved in the browser after every change and restored through one pure
 | `phase` | yes |
 | `battle` | only its inputs and position: the opponent, the hero's item ids and the replay `frame`. The frames are recomputed with `simulateBattle`, which is deterministic, so a hand-edited battle cannot crash the battle view. |
 | `searchId`, `error` | no, they only mean something while a request is in flight |
+| `runId`, `submitted` (B7) | yes, so a refresh on the result page cannot submit the run again |
 
 ### The refresh policy
 
@@ -305,17 +313,65 @@ All of these are one-line checks in `isPossibleRun`: values must be whole number
 * **Not defended on purpose:** a player who edits the saved data by hand into a state that is possible but unearned. The checks only make sure that the game does not break and that the run is plausible.
 * **A corrupt save is left in place** until a new run overwrites it.
 
+## B7: Hall of fame
+
+At the end of a run the player enters a name and the run is sent to the API. The server checks it, stores it in `server/hall-of-fame.json` and lists the best runs. The hall of fame is its own page at `/hall-of-fame`, linked in the header. The endpoints are documented in `docs/API.md`.
+
+| Requirement | Implementation |
+|---|---|
+| Enter a name at the end of a run | A form below the end-of-run summary on `ResultPage`. |
+| See how it compares | The answer contains the run's rank ("You placed #3"), and the hall of fame page highlights the player's own run. |
+| The API stores and lists the best runs in a defined order | `server/hallOfFame.js`: `addRun` stores, `rankRuns` sorts. `GET` returns the top 10. |
+| The API rejects invalid or implausible data with a clear error | `validateRun` returns one message per problem, sent as `400 { error }`. |
+| Loading, empty and error states | `HallOfFamePage`: "Loading…", "No runs yet", and the error text with a Retry button. The form shows "Submitting…" and the error. |
+| Retry without retyping | The name stays in the input after a failure, and the button turns into "Retry". |
+| Never submits the same run twice | Three layers, see below. |
+
+### Ranking
+
+More wins first, then fewer rounds. Every victory has 5 wins, so victories always come before defeats, and among victories fewer rounds means fewer lives lost. Two equal runs keep the order they were submitted in, because the sort is stable.
+
+### What the server accepts
+
+| Field | Rule |
+|---|---|
+| `runId` | non-empty string |
+| `name` | 1 to 20 characters after trimming (the input also has `maxLength={20}`) |
+| `wins`, `lives` | whole numbers, 0 to 5 and 0 to 3 |
+| run is over | exactly one of `wins = 5` and `lives = 0` |
+| `rounds` | `wins + (3 − lives)`: every battle is one round, the same rule as `isPossibleRun` in B6 |
+
+The server cannot import the TypeScript rules, so the numbers 5 and 3 are copied into `hallOfFame.js`. The server can only check that the numbers fit together, not that the battles really happened.
+
+### Never twice
+
+1. **While sending**, the button is disabled (`submitBlocker` gets "Submitting…"), so a double click sends one request.
+2. **After success**, `markSubmitted` sets `GameState.submitted`. It is saved (B6), so a refresh does not show the form again.
+3. **On the server**, every run carries a random `runId` (`crypto.randomUUID()` in `startNewRun`). A `runId` that is already stored is not added again; the stored entry comes back. This covers a request that reached the server while its answer was lost.
+
+`markSubmitted(game, runId)` only applies when `game.runId` matches, the same idea as the B5 `searchId`: if the player starts a new run while the request is still running, the late answer cannot mark the new run.
+
+### Decisions and trade-offs
+
+* **Submission state split by lifetime.** `runId` and `submitted` belong to the run and are saved. `name`, `sending`, `error` and the rank only matter while the result page is open, so they are component state in `ResultPage`.
+* **Validation on the server**, which is the authority. The client only blocks an empty name and limits the input to 20 characters.
+* **A JSON file instead of memory**, so the hall of fame survives a server restart (the requirement would allow memory). The whole list is read once at start and written again after every submission with `writeFileSync`. That is simple and fine for a small list; Node handles one request at a time, so two writes never overlap. A broken file stops the server with an error instead of silently starting empty and overwriting the old entries. No database, as the requirement allows.
+* **No `latency`/`fail` parameters** on the hall-of-fame endpoints. The error state is shown by stopping the API, the loading state with network throttling in the browser.
+* **The form is part of `ResultPage`** and not its own component, so the whole submission (state, request, form) is in one file.
+* **Left out on purpose:** a database, editing or deleting entries, paging beyond the top 10, and proof that a run was really played.
+
 ## Tests
 
-Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`).
+Tests sit next to the code they test (`*.test.ts`, run with `pnpm test`; `server/hallOfFame.test.js` is picked up as well).
 
 | File | Covers |
 |---|---|
 | `run.test.ts` | Buy, sell, reroll and move: results, blockers, refusal returns the same state, no mutation, and random action sequences that never lose or duplicate an item or make gold negative. |
-| `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. B5: one search at a time, a battle starts only for the current search and round, duplicate, late and old answers change nothing, and a failure returns to a usable shop. |
+| `game.test.ts` | `shopLock` for every phase, and that `updateRun` ignores buy, sell, reroll and move while shopping is closed. B5: one search at a time, a battle starts only for the current search and round, duplicate, late and old answers change nothing, and a failure returns to a usable shop. B7: `submitBlocker` (run not over, no name, already submitted) and `markSubmitted` (wrong run ignored, second call changes nothing). |
 | `build.test.ts` | `summarizeBuild` rates and the number formatting. |
-| `save.test.ts` | Restoring a shop (no free reroll), a cancelled search, a running replay (result counted once, also after a second refresh), a finished replay and a finished run; broken saves (not JSON, an unknown phase, wrong types) and impossible runs (ranges, round, gold, sizes, unknown items, phase against outcome) all give no game. |
+| `save.test.ts` | Restoring a shop (no free reroll), a cancelled search, a running replay (result counted once, also after a second refresh), a finished replay and a finished run; broken saves (not JSON, an unknown phase, wrong types) and impossible runs (ranges, round, gold, sizes, unknown items, phase against outcome) all give no game. B7: `runId` and `submitted` survive, a save without them is refused. |
 | `battle.test.ts` | Poison (duration roll, hurt per tick, ignores block, stacking, knockout, log), burn (damage, block first, decay, stacking, knockout), heal (cap, same-tick damage), same result for any backpack order, catalog has 3 items per effect. |
+| `server/hallOfFame.test.js` | `validateRun` accepts victories and defeats and refuses each kind of bad field, `rankRuns` order and ranks, `addRun` trims the name and never stores a `runId` twice. |
 | `sets.test.ts` | Catalog has 2+ sets with 3+ items and Fire, set progress, activation at 2 items (duplicates count), bonus only for the set's items, catalog never changed, opponents get bonuses, Fire burns only when active. |
 
 The UI is checked by hand; there are no component tests.

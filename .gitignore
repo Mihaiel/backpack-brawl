@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 pnpm-lock.yaml
+
+# B7: hall of fame entries written by the API (server/index.js)
+server/hall-of-fame.json

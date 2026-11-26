@@ -11,9 +11,9 @@ import type { BattleReplay, GameState, Opponent, RunState } from "./types";
 
 // ========== NEW GAME STARTS HERE ==========
 
-export function newGame(seed: number): GameState {
+export function newGame(seed: number, runId: string): GameState {
   // Before B5: return { phase: "shop", run: newRun(seed), battle: null, error: null };
-  return { phase: "shop", run: newRun(seed), battle: null, searchId: null, error: null };
+  return { phase: "shop", run: newRun(seed), battle: null, searchId: null, error: null, runId, submitted: false };
 }
 
 // ==============================
@@ -121,8 +121,29 @@ export function leaveBattle(game: GameState): GameState {
   return { ...game, phase: runOutcome(game.run) ? "finished" : "shop", battle: null };
 }
 
+/*================== B7: hall of fame ==================  */
+
+/** Why this run can't be sent to the hall of fame, or `null` if it can. */
+export function submitBlocker(game: GameState, name: string): string | null {
+  if (game.phase !== "finished") return "The run is not over";
+  if (game.submitted) return "Already in the hall of fame";
+  if (name.trim() === "") return "Enter your name";
+  return null;
+}
+
+/**
+ * The server stored the run with this id. Ignored if a new run was started in the meantime
+ * (the same idea as the B5 searchId), so a late answer can never mark the wrong run.
+ */
+export function markSubmitted(game: GameState, runId: string): GameState {
+  if (game.phase !== "finished" || game.runId !== runId || game.submitted) return game;
+  return { ...game, submitted: true };
+}
+
+// =====================================================================================================
+
 /** URL paths of the app's screens. */
-export const ROUTES = { start: "/", shop: "/shop", battle: "/battle", result: "/result" } as const;
+export const ROUTES = { start: "/", shop: "/shop", battle: "/battle", result: "/result", hallOfFame: "/hall-of-fame" } as const;
 export type GameRoute = (typeof ROUTES)[keyof typeof ROUTES];
 
 /**

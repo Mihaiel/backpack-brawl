@@ -129,7 +129,7 @@
 
 Every requirement is built on its own Git branch (`b1`, `b2`, ...) that starts from the merged `master`. Game rules are written as small pure TypeScript functions that are covered by unit tests placed next to the code (`*.test.ts`). The React UI only draws the state and calls those functions, and it is checked by hand in the browser. The architecture is documented in `ARCHITECTURE.md`.
 
-The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 and B4 followed because they only extend the battle engine, then B5. B6 came next, because the saved state had settled by then. Planned last: B7.
+The requirements are tackled in this order: B1 and B2 first, because they are small and set the patterns (pure functions, blockers, guarded actions) that the later ones reuse. B3 and B4 followed because they only extend the battle engine, then B5. B6 came next, because the saved state had settled by then. B7 came last, because it builds on the finished run and on the save from B6.
 
 == Responsibilities
 
@@ -147,12 +147,12 @@ Since I am working alone on this project, all of the responsibilities are up to 
   [B4], [Item sets and Burn],              [#done],  [24 Nov], [Branch `b4`, commit #commit("a7588d5")],
   [B5], [Resilient matchmaking],           [#done],  [25 Nov], [Branch `b5`, commit #commit("892a11a")],
   [B6], [Save and resume],                 [#done],  [25 Nov], [Branch `b6`, commit #commit("dde5276")],
-  [B7], [Hall of fame],                    [#open],  [-], [],
+  [B7], [Hall of fame],                    [#done],  [26 Nov], [Branch `b7` #fixme[add the commit hash]],
 )
 
 == Requirements not implemented
 
-Not applicable yet: B7 is still open. #fixme[Update before submission and say why anything is missing.]
+None. All seven requirements, B1 to B7, are implemented, and every part of their text is covered by code, tests or a check by hand in the browser.
 
 // ---------------------------------------------------------------------------
 = Timeline
@@ -172,25 +172,28 @@ Not applicable yet: B7 is still open. #fixme[Update before submission and say wh
     timeline-entry("24 Nov", (("Refactor", req-colors.Refactor),), [Project restructure], [Pure game rules moved into `src/game/`, with a lint rule that keeps React out. Commit #commit("ac4997b").]),
     timeline-entry("24 Nov", (("B4", req-colors.B4),), [Item sets and Burn], [Fire and Guard sets with a bonus at 2 items, and Burn (hurts for 3 per stack, block absorbs it, decays). Commit #commit("a7588d5").]),
     timeline-entry("25 Nov", (("B5", req-colors.B5),), [Resilient matchmaking], [A search id makes the game ignore late, duplicate and old answers, and a failed search returns to the shop. Commit #commit("892a11a").]),
-    timeline-entry("25 Nov", (("B6", req-colors.B6),), [Save and resume], [The run is saved in the browser and restored through a checked pure function, with a policy for a refresh during a search or a replay. Commit #commit("dde5276").]),
-    timeline-entry("TBD", (("B7", req-colors.B7),), [Hall of fame], [Planned last. Not started.], planned: true),
+    timeline-entry("25 Nov", (("B6", req-colors.B6),), [Save and resume], [The run is saved in the browser and restored through a checked pure function, with a refresh policy. Commit #commit("dde5276").]),
+    timeline-entry("26 Nov", (("B7", req-colors.B7),), [Hall of fame], [Name form after a run, validated and ranked list stored in a JSON file, own page. A run id stops double entries.]),
   )
 ]
 
 // ---------------------------------------------------------------------------
 = Qualitative Goals
 
-These are the goals I chose, each with how I check it.
+These are the goals I chose for this project:
 
 - *Correctness.* Gold and items must never be lost or duplicated, and battles must be reproducible. Rules are pure state-to-state functions, and a refused action returns the same state. Checked with unit tests, including random action sequences.
-- *Testability.* Many rules need to be verified quickly, and I have to explain the project in the exam. Rules live in plain TypeScript without React and the UI stays thin. Checked with `pnpm test`, lint, type check and build.
-- *Usability.* The player should see why an action is not possible and what the numbers mean. Every action has a blocker, so disabled buttons show the reason, and tooltips and the rules panel explain the mechanics. Checked by clicking through every screen.
-- *Resilience.* A slow or failing API and a browser refresh must not break or exploit a run. The game ignores late, duplicate and old search answers (B5), and a refresh restores the run through a checked save with a fixed policy (B6). Checked with unit tests for those cases, with broken and impossible saved data, and by refreshing the app in the browser.
+- *Structure.* Without a good project structure, the development turns into a mess quite fast. So restructuring the project as the features grow is really important.
+- *Separation of concerns.* I think there is no need to explain this, we learned enough in the previous lectures about it. (it does kind of fall under the same category as *Structure*)
+- *Overall UI and UX Experience has to be GOOD and feel SMOOTH.* The player should see why an action is not possible and what the numbers mean. Every action has a blocker, so disabled buttons show the reason, and tooltips and the rules panel explain the mechanics.
+- *Testability.* Many rules need to be verified quickly. Rules live in plain TypeScript without React and the UI stays thin. Checked with `pnpm test`, lint, type check and build.
+- *Robustness.* A slow or failing API and a browser refresh must not break or exploit a run. The game ignores late, duplicate and old search answers (B5), a refresh restores the run through a checked save with a fixed policy (B6), and the hall of fame never stores the same run twice, even when a submission is retried (B7). Checked with unit tests for those cases, with broken and impossible saved data, and by refreshing the app in the browser.
+- *Scope and simplicity.* Last but not least the scope and overall complexity of the project should be kept simple. I work alone on this whole project so I didn't want to go out of scope. The goal was to just implement enough so the requirements are fulfilled, the unit tests are passed and move on to the next feature.
 
 // ---------------------------------------------------------------------------
 = Architecture Overview
 
-The application is a single page React app with a thin, stateless Express API. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. Item sets (B4) are defined in one table in `sets.ts`, applied when a fighter is built, and shown in the interface with the `SetBadge` component. The details, diagrams and the tables for B1 to B4 are in `ARCHITECTURE.md`.
+The application is a single page React app with a thin Express API. The API's only state is the hall of fame (B7), stored in a JSON file. All game rules are pure TypeScript in the folder `src/game/` (`run.ts`, `game.ts`, `battle.ts`, `shop.ts`, `build.ts`, ...), and a lint rule forbids React imports there. A run moves through the phases shop, searching, battle and finished. Every shop or backpack action goes through one guard (`shopLock` and `updateRun` in `game.ts`) and then through a rule function in `run.ts` that has a matching blocker. Item sets (B4) are defined in one table in `sets.ts`, applied when a fighter is built, and shown in the interface with the `SetBadge` component. The run is saved in the browser and checked when it is loaded (B6, `save.ts`). Finished runs are sent to the API, which validates and ranks them in `server/hallOfFame.js` (B7). The details, diagrams and the tables for B1 to B7 are in `ARCHITECTURE.md`, and the endpoints are in `docs/API.md`.
 
 // ---------------------------------------------------------------------------
 = Important Decisions
@@ -265,10 +268,10 @@ The application is a single page React app with a thin, stateless Express API. A
   "B5",
   "25 Nov",
   [Decision 7: A search id in the game state decides which answer may start a battle],
-  [B5 says a battle may only start for the current round and the current search, and a slow, duplicate or late response must never restart a battle, start one outside a search, or apply a result twice. In the starter, `startSearch` could run twice, `searchFailed` left the game stuck in the `searching` phase, and `startBattle` accepted any opponent in any phase.],
+  [B5 says a battle may only start for the current round and the current search, and a slow, duplicate or late response must never restart a battle, start one outside a search, or apply a result twice. ],
   [(a) Cancel old requests with `AbortController` in the component. (b) Keep a request counter in a `useRef` in the page. (c) Keep a search id in `GameState` and let the pure transition functions check it.],
-  [Option (c). `startSearch(game, id)` stores the id and is refused while another search runs (`fightBlocker` says why, so the button and the action share one rule). `startBattle` and `searchFailed` take the id and only act if the phase is `searching` and the ids match, and `startBattle` also checks that the opponent is for the current round. A failure goes back to the `shop` phase with the message. The extra rules inside `fightBlocker` (a fight is allowed when there is no gold or nothing in the shop can be bought, so the player can never get stuck) are my own, see the AI usage section.],
-  [Every case in the requirement becomes a pure function call that a unit test can check by comparing the returned state with the input, with no browser or fake timers. The price is that a fast double click still sends a second HTTP request, but its answer is ignored. I checked this in the browser with a triple click, which sent three requests and started one battle.],
+  [Option (c). `startSearch(game, id)` stores the id and is refused while another search runs (`fightBlocker` says why, so the button and the action share one rule). Let's say the user starts a battle. The searchId is stored inside the gameState game.searchId (game.ts line 80). If by any change the user clicks too fast and actually sends 2 requests, the first one gets stored inside the gameState while the other one gets compared to it and is basically dropped.],
+  [The price is that a fast double click still sends a second HTTP request, but its answer is ignored. I checked this in the browser with a triple click, which sent three requests and started one battle.],
   [#commit("892a11a"), `game.ts`, `game.test.ts`, `ShopPage.tsx`],
 )
 
@@ -278,9 +281,20 @@ The application is a single page React app with a thin, stateless Express API. A
   [Decision 8: Save the run, recompute the battle, and decide what a refresh means],
   [B6 says a refresh must continue the run on the matching screen, bad saved data must never break the game, and a refresh must not give a free reroll, a different opponent, a second result, or a way to avoid a loss. The game has phases that are not safe to freeze: a search in flight, and a replay whose result is applied only at its last frame.],
   [(a) Save only settled states, such as the shop. (b) Save the whole `GameState` including every battle frame. (c) Save the run and phase, and for a battle only its inputs and replay position, and recompute the frames.],
-  [Option (c). `serializeGame` and `loadSavedGame` in `save.ts` are pure, and `GameProvider` writes the save after every change. The policy is: a search is cancelled and the player is back in the shop, a replay that was still running jumps to its end and its result counts at once (the existing `skipReplay`), and a replay that was already done stays as it was. `loadSavedGame` refuses anything that is not a possible run (ranges, sizes, unknown items, a round that does not match the battles played, too much gold, a phase that does not match the outcome) and returns `null`, so the game starts at the start page.],
-  [Option (a) would have been the least code, but a refresh could then avoid a loss or give a free peek at the next shop. Option (b) would have needed a deep check of every frame, because a malformed frame can crash the battle view. With (c) the frames come from `simulateBattle`, so they cannot be malformed. The price is that a refresh can cost the player the chance to watch the replay, and that someone who edits the saved data into a possible but unearned state is not stopped.],
+  [Option (c). `serializeGame` and `loadSavedGame` in `save.ts` are pure, and `GameProvider` writes the save after every change. So everytime the gameState changes, we save it insite the localStorage as a JSON. The policy is: a search is cancelled and the player is back in the shop, a replay that was still running jumps to its end and its result counts at once (the existing `skipReplay`), and a replay that was already done stays as it was. `loadSavedGame` refuses anything that is not a possible run (ranges, sizes, unknown items, a round that does not match the battles played, too much gold, a phase that does not match the outcome) and returns `null`, so the game starts at the start page.],
+  [Option (a) would have been the least code, but a refresh could then avoid a loss or give a free peek at the next shop. Option (b) would have needed a deep check of every frame, because a malformed frame can crash the battle view. With (c) the frames come from `simulateBattle`, so they cannot be malformed. The only bad thing about this, is that a refresh can cost the player the chance to watch the replay, and that someone who edits the saved data into a possible but unearned state is not stopped.],
   [#commit("dde5276"), `save.ts`, `save.test.ts`, `GameProvider.tsx`, `StartPage.tsx`],
+)
+
+#decision(
+  "B7",
+  "26 Nov",
+  [Decision 9: Validate on the server, never store a run twice, and keep the list in a file],
+  [B7 needs a hall of fame that the API validates, stores and ranks, a page with loading, empty and error states, a retry without retyping, and a guarantee that the same run is never submitted twice. The requirement allows keeping the entries in memory.],
+  [For "never twice": (a) only disable the button while sending, (b) also save a `submitted` flag with the run, (c) also give every run a random id that the server stores only once. For storage: (d) memory, (e) a JSON file, (f) a database.],
+  [Options (c) and (e). Every run gets a `runId` (`crypto.randomUUID()`) when it starts. The button is disabled while the request runs, `markSubmitted` sets `submitted` (saved by B6, so a refresh does not show the form again) and only for the run the answer belongs to, the same idea as the B5 `searchId`. The server refuses implausible runs in `validateRun` (name 1 to 20 characters, wins and lives in range, the run must be over, and rounds must equal wins plus lost lives) and does not add a `runId` it already has. The ranking is more wins first, then fewer rounds. The list is written to `server/hall-of-fame.json` after every submission and read again when the server starts.],
+  [Only the run id covers the case where a request reaches the server but its answer is lost and the player retries. The file means the hall of fame survives a server restart, at the cost of a few lines: a broken file stops the server with an error instead of being overwritten, and the file is git-ignored. The server copies the numbers 5 wins and 3 lives from the TypeScript rules, and it can only check that a run's numbers fit together, not that the battles were really played.],
+  [Branch `b7`, `server/hallOfFame.js`, `server/index.js`, `ResultPage.tsx`, `HallOfFamePage.tsx`, `docs/API.md`],
 )
 
 // ---------------------------------------------------------------------------
@@ -293,41 +307,35 @@ I used Claude Code assistance during this game development. It aided me in the f
 - *Generating test cases* \ During the implementation, one of the requirements specified inside `REQUIREMENTS.md` was that unit tests need to be implemented. I used it to generate unit tests for me and also account for other edge test cases that I might have missed.
 - *Documentation* \ While I did document most of `ARCHITECTURE.md` by myself, I used generative AI in order to draw ASCII sketches of the architecture. I provided overall a nice overview of the design :)
 
-*Why did I use it?* Well for one part I was doing the whole project alone. Overall tt speeds up repetitive work (tests, boilerplate, documentation) and gives a quick second view on design options, while the decisions stayed with me.
+*Why did I use it?* Well for one part I was doing the whole project alone. On the other hand, because it speeds up repetitive work (tests, boilerplate, documentation) and gives a quick second view on design options, while the decisions stayed with me.
 
-*Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, keeping B2 minimal, the rolled poison duration, the Fire set values, the rules inside `fightBlocker`, removing the save version, and the plain `if` style of the `restore` function.
+*Who decided what:* the choices about how the game should behave and look came from me: where the shop appears, the shop on the left and the inventory on the right, the compact result box, closing the shop once the next round starts, the hero card with a build summary, keeping B2 minimal, the rolled poison duration, the Fire set values, the rules inside `fightBlocker`, removing the save version, the plain `if` style of the `restore` function, storing the hall of fame in a file so it survives a restart, and the simpler, inlined hall of fame form and page.
 
-*How I checked the output:* unit tests (105 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
+*How I checked the output:* unit tests (128 in total which are passing), type check, lint, production build, and clicking through the app in the browser.
 
 *What I changed or rejected:*
 1. *B1 layout.* I rejected some design recommendations, as well as multiple UI implementations for B1, since from a UX perspective the experience of playing the game was redundant. The first layout hid the shop behind the result box and kept an open, unusable shop page in later rounds, so both were reworked.
 
 2. *One-click matchmaking.* I tried a flow that merged "On to round X" and "Find opponent" into one button, to remove the redundancy mentioned in point 1. It was built and then reverted before it was committed.
 
-3. *B2 scope.* The AI listed several options (drag and drop, keyboard support, selection kept in the game state). I rejected them and asked for the smallest version that fulfils the requirement: click to select, click a target to move or swap, and the selection as local UI state.
+3. *B2 scope.* The AI listed several options (drag and drop, keyboard support, selection kept in the game state). I rejected them and implemented a smaller version with click and select.
 
-4. *B3 poison rule.* The AI proposed that poison hurts every second tick for a fixed number of ticks. I changed that to my own rule: poison hurts every tick, and each application lasts a rolled 2 to 4 ticks. The AI then made the roll deterministic. I also chose to add new items instead of changing the existing ones.
+4. *B4 testing and values.* A simulation by the AI showed that Fire with 2 damage per stack did no more damage than plain items of the same price, and I raised it to 3 myself. I also decided not to add a third (healing) set, because the requirement was already fulfilled and the healing items already seemed really powerful when I ran a couple of tests.
 
-5. *B4 values and scope.* A simulation by the AI showed that Fire with 2 damage per stack did no more damage than plain items of the same price, and I raised it to 3 myself. I also decided not to add a third (healing) set, because the requirement was already fulfilled and I wanted to keep the project small enough to present.
+5. *B5 alternatives.* I implemented the searchId method on my own and then asked the AI for alternatives or possible disadvantages that it might have. He recommend me other options that might be better, but I rejected them as they felt like bloating the whole project and out of scope for such a small project.
 
-6. *B5 size.* The AI's first B5 version had a 10 second request timeout, friendlier error messages in `api.ts` and URL parameters for testing slow and failing searches. None of that is required, so I asked for the code to be reduced. `api.ts` was reverted to the starter version, the search state was simplified to a single `searchId`, and the tests were cut from 12 to 6.
+6. *My own logic in `fightBlocker`.* For "nothing left to buy" the AI suggested a separate helper function and warned that blocking the fight button when nothing is buyable could leave the player stuck. I did not want a separate function, and I wrote the whole logic myself of `fightBlocker` in `game.ts`.
+   The only downsight is that a player with no gold, or with nothing affordable, can fight with an empty backpack.
 
-7. *My own logic in `fightBlocker`.* For "nothing left to buy" the AI suggested a separate helper function and warned that blocking the fight button when nothing is buyable could leave the player stuck. I did not want a separate function, and I wrote the logic myself inside `fightBlocker` in `game.ts`:
-   - with no gold, a fight is allowed (`return null`),
-   - while a search runs, the reason "Searching for an opponent" is returned,
-   - the offers are checked with `buyBlocker`, and if every offer is blocked, a fight is allowed too, so the player can never get stuck in a shop they cannot use,
-   - otherwise, if the backpack is empty, the player is reminded to buy an item.
-   The consequence is that a player with no gold, or with nothing affordable, can fight with an empty backpack. The AI also pointed out two problems in my version. With no gold, `return null` comes before the "searching" check, so a second search can be started during a search, which B5 forbids. Also, `game.run.shop.length == 0` can never be true, because the shop always has 4 slots. At the time of writing, the code is unchanged, and the first problem is a known issue.
+7. *B6 save version.* When getting assistance with building the saving system, the Agent decided on format that had a `version` number, so that a save made by an older format would be refused. Which was a bit out of scope and not necessary and removed the feature. In the current implementation here was no need for this, so it felt like more bloat.
 
-8. *B6 save version.* The AI's save format had a `version` number, so that a save made by an older format would be refused. I asked what it was for. The AI explained that the other checks already reject most incompatible data, and that the number only helps when the shape stays valid but its meaning changes, which I do not expect in this project. I decided it was not necessary, and the AI removed it, together with its test.
+8. *B7 too many parts.* The first version of B7 had a separate `SubmitRunForm` component with eight props, and a `later` and `forcedFail` helper in `index.js`, so that the hall of fame endpoints also had the `latency` and `fail` parameters of the opponent endpoint. I asked why each part was needed. The form went back into `ResultPage.tsx`, so the whole submission is in one file, and `index.js` went back to how it was, with two short routes added. The error state can be shown by simply stopping the API. I also had `validateRun` shortened: one message for the name instead of two, no length limit on the run id, and always status 201 instead of a difference between 200 and 201.
 
-9. *B6 `restore` style.* The AI wrote the phase checks in `restore` as one-line conditional expressions. I found them hard to read and asked for a more primitive version, so I can explain it in the exam. It was rewritten with plain `if` blocks and the same behaviour.
+9. *B7 storage in a file.* The AI recommended keeping the hall of fame in memory, because the requirement allows it and every extra line has to be explained. I disagreed, because I wanted the hall of fame to survive a server restart, so it is now stored in `server/hall-of-fame.json`. When I tested it, nothing was saved at first. The cause was that the running API was still the old in-memory version, because Node does not reload the server when its code changes.
 
-10. *B6 limits that I accepted.* The AI recommended the compact battle save, the refresh policy and the "Continue run" button, and I accepted them. It also pointed out two gaps: a player who has the game open in two tabs can overwrite a lost battle with the other tab's older state, and a hand-edited save that is possible but unearned is not stopped. The AI suggested listening for the browser's `storage` event as the fix for the first one. I did not implement it. Both are listed as known limitations.
+10. *B7 hall of fame page.* I asked for `HallOfFamePage.tsx` to be rewritten in a more primitive way. The chain of `? :` in the JSX became plain `if / else`, the cleanup flag in `useEffect` was removed, and the error is one fixed message.
 
-11. *Test page.* The AI recommended a development-only `/dev` page with controls for failing searches, broken saves and battle simulation, and then recommended doing B5 first. I followed that, and I did not build the page. I tested by hand with the API stopped, with `API_FAIL=true pnpm server`, and by editing the saved data in the browser console.
-
-#fixme[Keep this section up to date for B7.]
+11. *What I kept from the AI for B7.* The run id. It looked like the biggest extra part, but it is the only thing that stops a run from being stored twice when an answer gets lost and the player retries. I also noticed that `FormEvent` was marked as deprecated in VS Code, and it was replaced with `SubmitEvent`.
 
 // ---------------------------------------------------------------------------
 = Final Reflection and Lessons Learned
@@ -349,6 +357,7 @@ So far: keeping the rules as pure functions with blockers made the UI easy to bu
   [#commit("a7588d5")], [B4: item sets (Fire, Guard) and Burn, `sets.ts`, `sets.test.ts`, `SetBadge.tsx` (branch `b4`).],
   [#commit("892a11a")], [B5: resilient matchmaking, search id guard in `game.ts`, `game.test.ts` (branch `b5`).],
   [#commit("dde5276")], [B6: save and resume, `save.ts`, `save.test.ts`, `GameProvider.tsx` (branch `b6`).],
+  [Branch `b7`], [B7: hall of fame, `server/hallOfFame.js`, `server/hallOfFame.test.js`, `HallOfFamePage.tsx`, `docs/API.md`. #fixme[add the commit hash]],
   [#commit("ac4997b")], [Restructure: pure rules in `src/game/` and the lint rule that guards the boundary.],
-  [`pnpm test`], [105 unit tests passing at the time of writing (`run`, `game`, `build`, `battle`, `sets` and `save` tests).],
+  [`pnpm test`], [128 unit tests passing at the time of writing (`run`, `game`, `build`, `battle`, `sets`, `save` and the server's `hallOfFame` tests).],
 )

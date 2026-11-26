@@ -143,4 +143,25 @@ export interface GameState {
   searchId: string | null;
   // Last opponent-search error, shown in the shop
   error: string | null;
+
+  // B7: From B7 onwards,
+  // we want a random id for every run. Sent with the hall-of-fame entry, so the server can refuse a second copy.
+  runId: string;
+  // B7: whether this run is already in the hall of fame.
+  submitted: boolean;
+}
+
+/** B7: what the result page sends to POST /api/hall-of-fame. */
+export interface RunSubmission {
+  runId: string;
+  name: string;
+  wins: number;
+  lives: number;
+  rounds: number;
+}
+
+/** B7: one ranked run as the API returns it. */
+export interface HallOfFameEntry extends RunSubmission {
+  rank: number;
+  outcome: "victory" | "defeat";
 }

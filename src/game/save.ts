@@ -30,6 +30,8 @@ interface SavedGame {
   phase: Phase;
   run: RunState;
   battle: SavedBattle | null;
+  runId: string; // B7
+  submitted: boolean; // B7
 }
 
 // We serialise the current gameState and turn in into a JSON object for storage.
@@ -39,7 +41,7 @@ export function serializeGame(game: GameState): string {
     heroItems: game.battle.player.items.map((item) => item.itemId),
     frame: game.battle.frame,
   };
-  const saved: SavedGame = { phase: game.phase, run: game.run, battle };
+  const saved: SavedGame = { phase: game.phase, run: game.run, battle, runId: game.runId, submitted: game.submitted };
   return JSON.stringify(saved);
 }
 
@@ -57,18 +59,18 @@ export function loadSavedGame(json: string | null): GameState | null {
 
 // Rebuilds a GameState. The shop and searching phases become a plain shop. 
 // The finished phase stays finished. For a battle, it rebuilds the hero and the enemy fighter, runs simulateBattle 
-function restore({ phase, run, battle }: SavedGame): GameState | null {
+function restore({ phase, run, battle, runId, submitted }: SavedGame): GameState | null {
   const over = runOutcome(run) !== null;
 
   if (phase === "finished") {
     if (!over) return null; // "finished" but the run is not over: impossible
-    return { phase, run, battle: null, searchId: null, error: null };
+    return { phase, run, battle: null, searchId: null, error: null, runId, submitted };
   }
 
   if (phase === "shop" || phase === "searching") {
     if (over) return null; // a run that is over cannot be in the shop
     // A search that was running is cancelled: both phases come back as "shop".
-    return { phase: "shop", run, battle: null, searchId: null, error: null };
+    return { phase: "shop", run, battle: null, searchId: null, error: null, runId, submitted };
   }
 
   // Only the phase "battle" is left.
@@ -83,7 +85,7 @@ function restore({ phase, run, battle }: SavedGame): GameState | null {
   const frame = Math.min(battle.frame, result.frames.length - 1);
 
   // A replay that was still running jumps to its end and applies the result (once: a finished replay changes nothing).
-  return skipReplay({ phase, run, battle: { opponent: battle.opponent, player, enemy, result, frame }, searchId: null, error: null });
+  return skipReplay({ phase, run, battle: { opponent: battle.opponent, player, enemy, result, frame }, searchId: null, error: null, runId, submitted });
 }
 
 
@@ -103,6 +105,7 @@ const isItemList = (value: unknown): value is string[] => Array.isArray(value) &
 function isSavedGame(saved: unknown): saved is SavedGame {
   if (!isRecord(saved)) return false;
   if (!PHASES.includes(saved.phase as Phase) || !isPossibleRun(saved.run)) return false;
+  if (typeof saved.runId !== "string" || typeof saved.submitted !== "boolean") return false; // B7
   return saved.battle === null || isSavedBattle(saved.battle);
 }
 

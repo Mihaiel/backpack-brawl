@@ -34,7 +34,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const value: GameContextValue = {
     game,
-    startNewRun: () => setGame(newGame(randomSeed())),
+    
+    // B7: every run gets a random id, so the hall of fame can recognise it.
+    startNewRun: () => setGame(newGame(randomSeed(), crypto.randomUUID())),
     update: (transition) => setGame((current) => (current ? transition(current) : current)),
   };
 

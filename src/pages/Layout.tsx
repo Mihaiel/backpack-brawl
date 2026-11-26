@@ -10,6 +10,9 @@ export function Layout() {
             🎒 Backpack <span className="text-gold">Brawl</span>
           </Link>
         </h1>
+        <Link to={ROUTES.hallOfFame} className="font-display font-bold text-gold hover:brightness-110">
+          🏆 Hall of fame
+        </Link>
       </header>
 
       <main className="flex flex-1 flex-col gap-4 py-6">
